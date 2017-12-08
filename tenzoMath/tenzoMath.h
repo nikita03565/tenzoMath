@@ -7,17 +7,31 @@
 #include "Tenzo.h"
 #include "Fanuc.h"
 
+
 class TenzoMath
 {	
 	/**
 	 * \brief bias of forces
 	 */
-	cv::Mat _bias;
+	std::array<double, 3> _forcesBias;
+	
+	/**
+	* \brief bias of torques
+	*/
+	std::array<double, 3> _torquesBias;
 
 	/**
-	 * \brief weigth of end-effector on every axis
+	 * \brief weigth of end-effector on every axis in positive direction
 	 */
-	std::array<double, 3> _fgmax;
+	cv::Mat _fgmax;
+
+	cv::Mat _tmax;
+
+	cv::Mat _tmaxNeg;
+	/**
+	* \brief weigth of end-effector on every axis in negative direction
+	*/
+	cv::Mat _fgmaxNeg;
 
 	/**
 	 * \brief 6 different positions of end-effector
@@ -43,6 +57,8 @@ class TenzoMath
 	 * \brief object for math model of fanuc
 	 */
 	FanucModel _model;
+
+	cv::Mat _collectedData;
 public:
 	TenzoMath();
 
@@ -56,6 +72,10 @@ public:
 	 * \brief calculates gravity compensation matrix for forces
 	 */
 	void gravCompensation();
+
+	void loadCalibData();
+
+	void check();
 };
 
 #endif //_TENZO_MATH_
