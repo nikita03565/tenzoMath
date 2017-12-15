@@ -259,3 +259,10 @@ paket-files/
 # Python Tools for Visual Studio (PTVS)
 __pycache__/
 *.pyc
+*.txt
+tenzoMath/Fanuc.cpp
+tenzoMath/Fanuc.h
+tenzoMath/Source.cpp
+tenzoMath/Tenzo.h
+tenzoMath/Source.cpp
+tenzoMath/Source.cpp

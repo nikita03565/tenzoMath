@@ -30,6 +30,9 @@
     <ClCompile Include="newRM.cpp">
       <Filter>Resource Files</Filter>
     </ClCompile>
+    <ClCompile Include="poly34.cpp">
+      <Filter>Resource Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="tenzoMath.h">
@@ -45,6 +48,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Tenzo.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="poly34.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
