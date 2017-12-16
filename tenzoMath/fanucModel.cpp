@@ -55,8 +55,7 @@ std::array<double, 3> FanucModel::anglesFromMat(const cv::Mat p6)
     std::array<double, 3> angleVector;
     angleVector.at(0) = atan2(p6.at<double>(2, 1), p6.at<double>(2, 2));
     angleVector.at(1) = atan2(-p6.at<double>(2, 0),
-                              sqrt(p6.at<double>(2, 1) * p6.at<double>(2, 1) + p6.at<double>(2, 2) * p6.at<double
-                              >(2, 2)));
+                              sqrt(p6.at<double>(2, 1) * p6.at<double>(2, 1) + p6.at<double>(2, 2) * p6.at<double>(2, 2)));
     angleVector.at(2) = atan2(p6.at<double>(1, 0), p6.at<double>(0, 0));
     return angleVector;
 }

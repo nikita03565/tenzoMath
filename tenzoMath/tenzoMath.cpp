@@ -5,6 +5,7 @@
 #include "poly34.h"
 #include <cmath>
 #include <string>
+#include <vector>
 void printCvMat(cv::Mat t, const char str[] = "some matrix")
 {
     std::cout << str << ":\n";
@@ -364,7 +365,7 @@ void TenzoMath::ftControlCartesianCoord()
 }
 
 //spherical wrist coordinates: homepos 985, 0, 1040; 
-cv::Mat TenzoMath::inverseTask(std::array<double, 6> coord) const
+cv::Mat TenzoMath::inverseTask(const std::array<double, 6> coord) const
 {
     std::vector<RoboModel::DhParameters> param = _model.getDhParameters();
 
@@ -385,8 +386,8 @@ cv::Mat TenzoMath::inverseTask(std::array<double, 6> coord) const
     const double i = param[2]._aParam * sin(param[1]._alphaParam);
     const double j = param[1]._dParam + param[2]._dParam * cos(param[1]._alphaParam) + param[3]._dParam *
                      cos(param[1]._alphaParam) * cos(param[2]._alphaParam) - (coord[2] - param[0]._dParam) * cos(param[0]._alphaParam);
-    const double r = 4. * param[0]._aParam * param[0]._aParam * (j - h) * (j - h) + sin(param[0]._alphaParam) * sin(c) * (e - c) - 4. *
-                     param[0]._aParam * param[0]._aParam * sin(param[0]._alphaParam) * sin(param[0]._alphaParam) * (coord[0] * coord[0] + coord[1] * coord[1]);
+    const double r = 4. * param[0]._aParam * param[0]._aParam * (j - h) * (j - h) + sin(param[0]._alphaParam) * sin(param[0]._alphaParam) * (e - c) * (e - c) 
+                   - 4. * param[0]._aParam * param[0]._aParam * sin(param[0]._alphaParam) * sin(param[0]._alphaParam) * (coord[0] * coord[0] + coord[1] * coord[1]);
     const double s = 4. * (4. * param[0]._aParam * param[0]._aParam * i * (j - h) + sin(param[0]._alphaParam) * sin(param[0]._alphaParam) * d * 
                      (e - c));
     const double t = 2. * (4. * param[0]._aParam * param[0]._aParam * (j * j - h * h + 2 * i * i) + sin(param[0]._alphaParam) * sin(param[0]._alphaParam)
@@ -410,7 +411,7 @@ cv::Mat TenzoMath::inverseTask(std::array<double, 6> coord) const
     {
         theta.at<double>(it, 2) = 2. * atan(x[it]);
     }
-
+   
     double costheta, sintheta;
     for (int it = 0; it < numberOfRoots; ++it)
     {
@@ -449,8 +450,7 @@ cv::Mat TenzoMath::inverseTask(std::array<double, 6> coord) const
         theta.at<double>(it, 2) -= theta.at<double>(it, 1);
     }
 
-    std::array<int, 4> ind = { -1, -1, -1, -1 };
-    int jt = 0;
+    std::vector<int> ind;
 
     for (int it = 0; it < numberOfRoots; ++it)
     {
@@ -462,15 +462,12 @@ cv::Mat TenzoMath::inverseTask(std::array<double, 6> coord) const
             isOk = false;
         if (theta.at<double>(it, 2) > 200. / 180. * PI || theta.at<double>(it, 2) < -70 / 180. * PI)
             isOk = false;
-        /*if (abs(theta.at<double>(it, 3)) > 210. / 180. * PI) isOk = false;
-        if (abs(theta.at<double>(it, 4)) > 140. / 180. * PI) isOk = false;
-        if (abs(theta.at<double>(it, 5)) > 270. / 180. * PI) isOk = false;*/
-
+        
         if (!std::isnan(theta.at<double>(it, 1)) && isOk)
-            ind[jt++] = it;   
+            ind.emplace_back(it);   
     }
-    cv::Mat thetaRes(jt, 6, cv::DataType<double>::type);
-    for (int it = 0; it < jt; ++it)
+    cv::Mat thetaRes(ind.size(), 6, cv::DataType<double>::type);
+    for (int it = 0; it < ind.size(); ++it)
     {
         thetaRes.at<double>(it, 0) = theta.at<double>(ind[it], 0);
         thetaRes.at<double>(it, 1) = theta.at<double>(ind[it], 1);
@@ -479,84 +476,66 @@ cv::Mat TenzoMath::inverseTask(std::array<double, 6> coord) const
         thetaRes.at<double>(it, 4) = 0;
         thetaRes.at<double>(it, 5) = 0;
     }
-
-    //std::cout << theta << std::endl << thetaRes << std::endl;
-    //------------------------------------------------------------------------------------------------
-    cv::Mat thetaFinal(thetaRes.rows * 4, 6, cv::DataType<double>::type);
+  
+    cv::Mat thetaPrefinal(thetaRes.rows * 2, 6, cv::DataType<double>::type);
     for (int it = 0; it < thetaRes.rows; ++it)
     {
         cv::Mat r36(3, 3, cv::DataType<double>::type), r03(3, 3, cv::DataType<double>::type);
         std::array<double, 6> q;
         q[0] = thetaRes.at<double>(it, 0);
-        q[1] = -thetaRes.at<double>(it, 1) + PI / 2;//j1 и j2 в разные стороны поворачиваются.
+        q[1] = -thetaRes.at<double>(it, 1) + PI / 2;
         q[2] = thetaRes.at<double>(it, 2) + thetaRes.at<double>(it, 1);
 
         r03 = qi(param[0]._alphaParam, q[0]) * qi(param[1]._alphaParam, q[1]) * qi(param[2]._alphaParam, q[2]);
-        r36 = r03.inv() * rotMatrix(coord[3], coord[4], coord[5]);
+        r36 = r03.inv() * rotMatrix(coord[3] / 180. * PI, coord[4] / 180. * PI, coord[5] / 180. * PI);
 
-        //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-        for (int zt = 0; zt < 4; ++ zt)
+        for (int zt = 0; zt < 2; ++zt)
         {
-            thetaFinal.at<double>(it + zt, 0) = thetaRes.at<double>(it, 0);
-            thetaFinal.at<double>(it + zt, 1) = thetaRes.at<double>(it, 1);
-            thetaFinal.at<double>(it + zt, 2) = thetaRes.at<double>(it, 2);
+            thetaPrefinal.at<double>(it * 2 + zt, 0) = thetaRes.at<double>(it, 0);
+            thetaPrefinal.at<double>(it * 2 + zt, 1) = thetaRes.at<double>(it, 1);
+            thetaPrefinal.at<double>(it * 2 + zt, 2) = thetaRes.at<double>(it, 2);
         }
         
-        thetaFinal.at<double>(it, 4) = acos(r36.at<double>(2, 2));
-        thetaFinal.at<double>(it + 1, 4) = acos(r36.at<double>(2, 2));
-        thetaFinal.at<double>(it + 2, 4) = -acos(r36.at<double>(2, 2));
-        thetaFinal.at<double>(it + 3, 4) = -acos(r36.at<double>(2, 2));
+        thetaPrefinal.at<double>(it * 2, 4) = acos(r36.at<double>(2, 2));
+        thetaPrefinal.at<double>(it * 2 + 1, 4) = -acos(r36.at<double>(2, 2));
 
-        thetaFinal.at<double>(it, 3) = -asin(r36.at<double>(1, 2) / thetaFinal.at<double>(it, 4));
-        thetaFinal.at<double>(it + 1, 3) = -(PI - asin(r36.at<double>(1, 2) / thetaFinal.at<double>(it + 1, 4)));
-        thetaFinal.at<double>(it + 2, 3) = -asin(r36.at<double>(1, 2) / thetaFinal.at<double>(it + 2, 4));
-        thetaFinal.at<double>(it + 3, 3) = -(PI - asin(r36.at<double>(1, 2) / thetaFinal.at<double>(it + 3, 4)));
+        thetaPrefinal.at<double>(it * 2, 3) = -(PI - asin(r36.at<double>(1, 2) / sin(thetaPrefinal.at<double>(it * 2, 4))));
+        thetaPrefinal.at<double>(it * 2 + 1, 3) = -asin(r36.at<double>(1, 2) / sin(thetaPrefinal.at<double>(it * 2 + 1, 4)));
 
-        thetaFinal.at<double>(it, 5) = -asin(r36.at<double>(2, 1) / thetaFinal.at<double>(it, 4));
-        thetaFinal.at<double>(it + 1, 5) = -(PI - asin(r36.at<double>(2, 1) / thetaFinal.at<double>(it + 1, 4)));
-        thetaFinal.at<double>(it + 2, 5) = -asin(r36.at<double>(2, 1) / thetaFinal.at<double>(it + 2, 4));
-        thetaFinal.at<double>(it + 3, 5) = -(PI - asin(r36.at<double>(2, 1) / thetaFinal.at<double>(it + 3, 4)));
-
-        //thetaFinal.at<double>(it, 5) = atan2(r36.at<double>(2, 1), -r36.at<double>(2, 0));
-        //thetaFinal.at<double>(it, 4) = atan2(r36.at<double>(2, 1) / sin(thetaFinal.at<double>(it, 5)), r36.at<double>(2, 2));
-        //thetaFinal.at<double>(it, 3) = -atan2(r36.at<double>(1, 2), r36.at<double>(0, 2)); //минус потому что q[3) = -j[3)
-
-        //thetaFinal.at<double>(it, 5) = -thetaFinal.at<double>(it, 5); //минус потому что q[5) = -j[5)
+        thetaPrefinal.at<double>(it * 2, 5) = -(PI - asin(r36.at<double>(2, 1) / sin(thetaPrefinal.at<double>(it * 2, 4))));
+        thetaPrefinal.at<double>(it * 2 + 1, 5) = -asin(r36.at<double>(2, 1) / sin(thetaPrefinal.at<double>(it * 2 + 1, 4)));
     }
-    //    bool isOk = true;
 
-    //    for (int k = 0; k < 6; ++k)
-    //    {
-    //        //совпадение результатов с учетом погрешностей
-    //        if (abs(res[k] - coord[k]) > 0.5) isOk = false;
-    //    }
-    //    //ограничения на углы
-    //    if (abs(theta[it][0]) > 170. / 180. * PI) isOk = false;
-    //    if (theta[it][1] > 90. / 180. * PI || theta[it][1] < -70 / 180. * PI) isOk = false;
-    //    if (theta[it][2] > 200. / 180. * PI || theta[it][2] < -70 / 180. * PI) isOk = false;
-    //    if (abs(theta[it][3]) > 210. / 180. * PI) isOk = false;
-    //    if (abs(theta[it][4]) > 140. / 180. * PI) isOk = false;
-    //    if (abs(theta[it][5]) > 270. / 180. * PI) isOk = false;
+    std::vector<int> indFinal;
+    for (int it = 0; it < thetaPrefinal.rows; ++it)
+    {
+        bool isOk = true;
+        
+        if (abs(thetaPrefinal.at<double>(it, 3)) > 210. / 180. * PI) isOk = false;
+        if (abs(thetaPrefinal.at<double>(it, 4)) > 140. / 180. * PI) isOk = false;
+        if (abs(thetaPrefinal.at<double>(it, 5)) > 270. / 180. * PI) isOk = false;
 
-    //    if (isOk)
-    //    {
-    //        //std::cout << "\n" << i << " is OK\n" << res[0] << ' ' << res[1] << ' ' << res[2] << ' ' << res[3] * 180. / PI << ' ' << res[4] * 180. / PI << ' ' << res[5] * 180. / PI << '\n';
-    //        //std::cout << "t1 = " << theta[i][0] * 180.0 / PI << " t2 = " << theta[i][1] * 180.0 / PI << " t3 = " << theta[i][2] * 180.0 / PI << " t4 = " << theta[i][3] * 180.0 / PI << " t5 = " << theta[i][4] * 180.0 / PI << " t6 = " << theta[i][5] * 180.0 / PI << '\n';
-    //        num[n] = it;
-    //        ++n;
-    //    }
-    //}
-    //cv::Mat ans(n, 6, CV_64F);
-    //for (int it = 0; it < n; ++it)
-    //    for (int jt = 0; jt < 6; ++jt)
-    //        ans.at<double>(it, jt) = theta[num[it]][jt];
-    //return ans;
-    //------------------------------------------------------------------------
+        if (isOk)
+        {
+            indFinal.emplace_back(it);
+        }
+    }
+
+    cv::Mat thetaFinal(indFinal.size(), 6, cv::DataType<double>::type);
+    for (int it = 0; it < indFinal.size(); ++it)
+    {
+        thetaFinal.at<double>(it, 0) = thetaPrefinal.at<double>(indFinal[it], 0);
+        thetaFinal.at<double>(it, 1) = thetaPrefinal.at<double>(indFinal[it], 1);
+        thetaFinal.at<double>(it, 2) = thetaPrefinal.at<double>(indFinal[it], 2);
+        thetaFinal.at<double>(it, 3) = thetaPrefinal.at<double>(indFinal[it], 3);
+        thetaFinal.at<double>(it, 4) = thetaPrefinal.at<double>(indFinal[it], 4);
+        thetaFinal.at<double>(it, 5) = thetaPrefinal.at<double>(indFinal[it], 5);
+    }
 
     return thetaFinal * 180. / PI;
 }
 
-std::array<double, 3> TenzoMath::chooseNearestPose(cv::Mat res, std::array<double, 3> prevPos) 
+std::array<double, 6> TenzoMath::chooseNearestPose(cv::Mat res, std::array<double, 6> prevPos) const
 {
     if (!res.empty())
     {
@@ -565,7 +544,7 @@ std::array<double, 3> TenzoMath::chooseNearestPose(cv::Mat res, std::array<doubl
         for (int j = 0; j < res.rows; ++j)
         {
             double deltaTmp = 0;
-            for (int t = 0; t < 3; ++t)
+            for (int t = 0; t < 6; ++t)
             {
                 deltaTmp += abs(res.at<double>(j, t) - prevPos[t]);
             }
@@ -585,13 +564,11 @@ std::array<double, 3> TenzoMath::chooseNearestPose(cv::Mat res, std::array<doubl
             }
             if (min < 10.f)
             {
-                return std::array<double, 3>{res.at<double>(num, 0), res.at<double>(num, 1), res.at<double>(num, 2)};
+                return std::array<double, 6>{res.at<double>(num, 0), res.at<double>(num, 1), res.at<double>(num, 2),  res.at<double>(num, 3), res.at<double>(num, 4), res.at<double>(num, 5) };
             }
         }
         return prevPos;
-
     }
-
     return prevPos;
 }
 

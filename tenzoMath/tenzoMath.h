@@ -79,7 +79,7 @@ class TenzoMath
      */
     cv::Mat TenzoMath::rotMatrix(const double& w, const double& p, const double& r) const;
 
-    std::array<double, 3> chooseNearestPose(cv::Mat res, std::array<double, 3> prevPos);
+    std::array<double, 6> chooseNearestPose(cv::Mat res, std::array<double, 6> prevPos) const;
 
     cv::Mat qi(const double& alpha, const double& q) const;
 
@@ -91,7 +91,7 @@ class TenzoMath
     const double _zMax;
 public:
 
-    cv::Mat inverseTask(std::array<double, 6> coord) const;
+    cv::Mat inverseTask(const std::array<double, 6> coord) const;
 
     TenzoMath();
 
