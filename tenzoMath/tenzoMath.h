@@ -71,17 +71,29 @@ class TenzoMath
     cv::Mat _collectedData;
 
     /**
-     * \brief calculates rotation matrix of end-effector. input angles given in radians
-     * \param[in] w angle of rotation around x axis
-     * \param[in] p angle of rotation around y axis
-     * \param[in] r angle of rotation around z axis
-     * \return rotation matrix 3*3
+     * \brief stored data from force-torque sensor
      */
-    cv::Mat TenzoMath::rotMatrix(const double& w, const double& p, const double& r) const;
+    cv::Mat _tmp;
 
-    std::array<double, 6> chooseNearestPose(cv::Mat res, std::array<double, 6> prevPos) const;
+    /**
+     * \brief string of cartesian coords
+     */
+    std::string _coordToMove;
 
-    cv::Mat qi(const double& alpha, const double& q) const;
+    /**
+     * \brief swaps x, y, z axes so sensor frame is the same as end-effector frame
+     * \param[in] data raw readings from sensor
+     * \return new data
+     */
+    std::array<double, 6> swapData(const std::array<double, 6> data) const;
+
+
+    /**
+     * \brief converts array to of cartesian coords to string
+     * \param[in] coord input array
+     * \return string ready to sending
+     */
+    std::string toString(std::array<double, 6> coord) const;
 
     const double _xMin;
     const double _yMin;
@@ -90,9 +102,6 @@ class TenzoMath
     const double _yMax; 
     const double _zMax;
 public:
-
-    cv::Mat inverseTask(const std::array<double, 6> coord) const;
-
     TenzoMath();
 
     ~TenzoMath() = default;
@@ -117,11 +126,22 @@ public:
      */
     void ftControlCartesianCoord();
 
-    void ftControlJoints();
+    /**
+     * \brief return _coordToMove
+     * \return string of cartesian coords
+     */
+    std::string getCoordToMove() const;
 
-    void collectTestData();
+    /**
+     * \brief calculates new position in cartesian coords and stores it in string
+     * \param[in] curPos current position in cartesian coords
+     * \param[in] ftReadings force-torque readings from sensor
+     */
+    void TenzoMath::calculatePos(std::array<double, 6>& curPos, std::array<double, 6> ftReadings);
 
-    void doTest();
+    void newJointsControl();
+
+    static std::array<double, 6> chooseNearestPose(cv::Mat res, std::array<double, 6> prevPos);
 };
 
 #endif //_TENZO_MATH_

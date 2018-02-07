@@ -15,12 +15,7 @@ class FanucModel : RoboModel
     */
     static std::vector<double> jointsToQ(std::array<double, 6> j);
 
-    /**
-    * \brief function to calculate three rotation angles from transformation matrix
-    * \param[in] p6 transofrmation matrix(4x4) or rotation matrix(3x3)
-    * \return three Tait-Bryan angles
-    */
-    static std::array<double, 3> anglesFromMat(const cv::Mat p6);
+    cv::Mat qi(const double& alpha, const double& q) const;
 
     const cv::Mat _toCamera, _toSixth, _forMovingToCamera;
 public:
@@ -29,6 +24,7 @@ public:
     */
     FanucModel();
 
+    ~FanucModel() = default;
     /**
     * \brief function for solving forward kinematic task for Fanuc M20ia
     * \param[in] inputjoints joints angles
@@ -43,6 +39,26 @@ public:
     std::vector<DhParameters> getDhParameters() const;
 
     static std::array<double, 6> getCoordsFromMat(cv::Mat transformMatrix);
+
+    cv::Mat fanucInverseTask(const std::array<double, 6> coord) const;
+
+    cv::Mat fanucInverseTaskNew(const std::array<double, 6> coord) const;
+
+    /**
+    * \brief calculates rotation matrix of end-effector. input angles given in radians
+    * \param[in] w angle of rotation around x axis
+    * \param[in] p angle of rotation around y axis
+    * \param[in] r angle of rotation around z axis
+    * \return rotation matrix 3*3
+    */
+    static cv::Mat rotMatrix(const double& w, const double& p, const double& r);
+
+    /**
+    * \brief function to calculate three rotation angles from transformation matrix
+    * \param[in] p6 transofrmation matrix(4x4) or rotation matrix(3x3)
+    * \return three Tait-Bryan angles
+    */
+    static std::array<double, 3> anglesFromMat(const cv::Mat p6);
 };
 
 #endif
