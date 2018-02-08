@@ -1,7 +1,6 @@
 #ifndef FANUC_MODEL
 #define FANUC_MODEL
 #include "newRM.h"
-#define PI 3.14159265
 
 /**
 * \brief class for matematics of robot manipulator Fanuc M20ia based on Denavit-Hartenberg parameters
@@ -19,6 +18,7 @@ class FanucModel : RoboModel
 
     const cv::Mat _toCamera, _toSixth, _forMovingToCamera;
 public:
+    static constexpr double PI = 3.14159265;
     /**
     * \brief default constructor with Fanuc M20ia parameters
     */

@@ -1,8 +1,8 @@
 #include <math.h>
 
 #include "poly34.h"     // solution of cubic and quartic equation
-#define	TwoPi  6.28318530717958648
-const double eps = 1e-14;
+constexpr double	TwoPi = 6.28318530717958648;
+constexpr double eps = 1e-14;
 
 static double _root3(double x)
 {

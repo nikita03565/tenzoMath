@@ -303,8 +303,10 @@ std::array<double, 6> FanucM20iA::getJointAngles() const
     {
         errorHandler();
     }
-    buff[valRead - 1] = '\0';
-
+    if (valRead < 64)
+    {
+        buff[valRead] = '\0';
+    }
     //std::cout << buff << std::endl;
     return parseString(buff);
 }

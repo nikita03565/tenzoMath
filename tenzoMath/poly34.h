@@ -1,8 +1,3 @@
-// poly34.h : solution of cubic and quartic equation
-// (c) Khashin S.I. http://math.ivanovo.ac.ru/dalgebra/Khashin/index.html
-// khash2 (at) gmail.com
-
-
 // x - array of size 2
 // return 2: 2 real roots x[0], x[1]
 // return 0: pair of complex roots: x[0]±i*x[1]

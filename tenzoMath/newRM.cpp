@@ -19,11 +19,6 @@ RoboModel::RoboModel(std::vector<std::array<double, 4>> input)
         _kinematicChain.push_back(DhParameters(input[i][0], input[i][1], input[i][2], input[i][3]));
 }
 
-RoboModel::~RoboModel()
-{
-}
-
-
 cv::Mat RoboModel::prevMatTransform(const int i)
 {
     cv::Mat result(4, 4, CV_64F);

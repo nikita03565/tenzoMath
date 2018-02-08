@@ -9,7 +9,7 @@
 #include <tchar.h>
 #include <ctime>
 
-void printCvMat(cv::Mat t, const char str[] = "some matrix")
+void printCvMat(cv::Mat t, const std::string str = "some matrix")
 {
     std::cout << str << ":\n";
     for (int i = 0; i < t.rows; ++i)
@@ -19,9 +19,9 @@ void printCvMat(cv::Mat t, const char str[] = "some matrix")
                 std::cout << 0 << ' ';
             else
                 std::cout << t.at<double>(i, j) << ' ';
-        std::cout << std::endl;
+        std::cout << '\n';
     }
-    std::cout << "-------------------------" << std::endl;
+    std::cout << "-------------------------" << '\n';
 }
 
 
@@ -64,14 +64,7 @@ TenzoMath::TenzoMath() : _xMin (680.),
 
 std::array<double, 6> TenzoMath::swapData(const std::array<double, 6> data) const
 {
-    std::array<double, 6> tmp;
-    tmp[0] = data[1];
-    tmp[1] = -data[0];
-    tmp[2] = -data[2];
-    tmp[3] = -data[4];
-    tmp[4] = data[3];
-    tmp[5] = data[5];
-    return tmp;
+    return std::array<double, 6>{ data[1], -data[0], -data[2], -data[4], data[3], data[5] };
 }
 
 std::string TenzoMath::toString(std::array<double, 6> coord) const
@@ -177,7 +170,7 @@ void TenzoMath::doCalibration()
     std::ofstream out("calibData.txt");
 
     out << _forcesBias[0] << ' ' << _forcesBias[1] << ' ' << _forcesBias[2] << ' ' << _torquesBias[0] << ' ' 
-        << _torquesBias[1] << ' ' << _torquesBias[2] << std::endl;
+        << _torquesBias[1] << ' ' << _torquesBias[2] << '\n';
     for (int i = 0; i < 3; ++i)
         for (int j = 0; j < 3; ++j)
             out << _fgmax.at<double>(i, j) << ' ';
@@ -300,8 +293,8 @@ void TenzoMath::loadCalibData()
 
 void TenzoMath::calculatePos(std::array<double, 6>& curPos, std::array<double, 6> ftReadings)
 {
-    cv::Mat currRot = FanucModel::rotMatrix(curPos[3] / 180.0 * PI, curPos[4] / 180.0 * PI,
-       curPos[5] / 180.0 * PI);
+    cv::Mat currRot = FanucModel::rotMatrix(curPos[3] / 180.0 * FanucModel::PI, curPos[4] / 180.0 * FanucModel::PI,
+       curPos[5] / 180.0 * FanucModel::PI);
 
     constexpr double coefForces = 0.005;
     constexpr double coefTorques = 0.001;
@@ -348,8 +341,8 @@ void TenzoMath::ftControlCartesianCoord()
     while (true)
     {
         std::array<double, 6> tmp = swapData(tenzoData.readData());
-        currRot = FanucModel::rotMatrix(worldPos[3] / 180.0 * PI, worldPos[4] / 180.0 * PI,
-            worldPos[5] / 180.0 * PI);
+        currRot = FanucModel::rotMatrix(worldPos[3] / 180.0 * FanucModel::PI, worldPos[4] / 180.0 * FanucModel::PI,
+            worldPos[5] / 180.0 * FanucModel::PI);
 
         std::array<double, 6> newData = gravCompensation(currRot, tmp);
         forces.at<double>(0, 0) = (abs(newData[0]) < threshold ? 0 : newData[0] * coefForces);
@@ -363,7 +356,7 @@ void TenzoMath::ftControlCartesianCoord()
         torques *= currRot.t();
 
        /* std::cout << forces.at<double>(0, 0) << '\t' << forces.at<double>(0, 1) << '\t' << forces.at<double>(0, 2) << '\t'
-        		<< torques.at<double>(0, 0) << '\t' << torques.at<double>(0, 1) << '\t' << torques.at<double>(0, 2) << std::endl;*/
+        		<< torques.at<double>(0, 0) << '\t' << torques.at<double>(0, 1) << '\t' << torques.at<double>(0, 2) << '\n';*/
 
         worldPos[0] += forces.at<double>(0, 0);
         worldPos[1] += forces.at<double>(0, 1);
@@ -383,7 +376,7 @@ void TenzoMath::ftControlCartesianCoord()
         {
             std::cout << worldPos[i] << '\t';
         }
-        std::cout << std::endl;*/
+        std::cout << '\n';*/
         
        // _fanuc.goToCoordinates(worldPos[0], worldPos[1], worldPos[2], worldPos[3], worldPos[4],
          //                      worldPos[5]);
@@ -391,7 +384,7 @@ void TenzoMath::ftControlCartesianCoord()
         //_fanuc.getJointAngles();
 
        _coordToMove = toString(worldPos);
-       std::cout << getCoordToMove() << std::endl;
+       std::cout << getCoordToMove() << '\n';
     }
 }
 
@@ -462,9 +455,9 @@ void TenzoMath::newJointsControl()
             {
                 std::cout << worldPos[i] << '\t';
             }
-            std::cout << std::endl;
+            std::cout << '\n';
 
-            std::cout << _model.fanucInverseTask(worldPos) << std::endl;
+            std::cout << _model.fanucInverseTask(worldPos) << '\n';
 
             jointPos = chooseNearestPose(_model.fanucInverseTask(worldPos), jointPos);
             p6 = _model.fanucForwardTask(jointPos);
@@ -472,7 +465,7 @@ void TenzoMath::newJointsControl()
             {
                 std::cout << jointPos[i] << '\t';
             }
-            std::cout << std::endl;*/
+            std::cout << '\n';*/
 
             _fanuc.goToCoordinates(jointPos[0], jointPos[1], jointPos[2], jointPos[3], jointPos[4], jointPos[5]);
             _fanuc.getJointAngles(); //????падает
@@ -485,7 +478,7 @@ std::array<double, 6> TenzoMath::chooseNearestPose(cv::Mat res, std::array<doubl
 {
     if (!res.empty())
     {
-        // std::cout << res << std::endl << std::endl;
+        // std::cout << res << '\n' << '\n';
         std::vector<double> delta;
         for (int j = 0; j < res.rows; ++j)
         {

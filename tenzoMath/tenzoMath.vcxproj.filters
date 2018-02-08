@@ -30,6 +30,9 @@
     <ClCompile Include="poly34.cpp">
       <Filter>Resource Files</Filter>
     </ClCompile>
+    <ClCompile Include="Source.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="tenzoMath.h">

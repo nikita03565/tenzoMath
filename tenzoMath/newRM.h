@@ -47,7 +47,7 @@ protected:
     */
     explicit RoboModel(std::vector<std::array<double, 4>> input);
 
-    ~RoboModel();
+    ~RoboModel() = default;
 
     /**
     * \brief function for solving forward kinematic task
@@ -57,4 +57,4 @@ protected:
     cv::Mat forwardTask(std::vector<double> inputq);
 };
 
-#endif
+#endif // NEW_RM
