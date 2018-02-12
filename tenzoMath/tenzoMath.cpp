@@ -44,6 +44,17 @@ TenzoMath::TenzoMath() : _xMin (680.),
         }
     };
 
+    _posCartesian = {
+        {
+            { 985, 0, 940, 180, 0 ,0 },
+            { 1085, 0, 1040, 135, -90, 45 },
+            { 1085, 0, 1040, 135, 90, 135 },
+            { 985, 0, 1140, 0, 0, 0 },
+            { 1085, 0, 1040, -90, 0, -90 },
+            { 1085, 0, 1040, 90, 0, 90 }
+        }
+    };
+
     _g = cv::Mat(3, 1, cv::DataType<double>::type);
     _g.at<double>(0, 0) = 0.;
     _g.at<double>(1, 0) = 0.;
@@ -321,6 +332,17 @@ void TenzoMath::calculatePos(std::array<double, 6>& curPos, std::array<double, 6
     curPos[5] -= torques.at<double>(0, 2);
 
     _coordToMove = toString(curPos);
+}
+
+std::array<double, 6> TenzoMath::jointsToWorld(const std::array<double, 6>& joints)
+{
+    cv::Mat tmp = _model.fanucForwardTask(joints);
+    std::array<double, 3> tmptmp = FanucModel::anglesFromMat(tmp);
+    return std::array<double, 6>{
+        tmp.at<double>(0, 3), tmp.at<double>(1, 3), tmp.at<double>(2, 3), tmptmp[0] * 180. / FanucModel::PI,
+        tmptmp[1] * 180. / FanucModel::PI, tmptmp[2] * 180. / FanucModel::PI
+    };
+
 }
 
 void TenzoMath::ftControlCartesianCoord()

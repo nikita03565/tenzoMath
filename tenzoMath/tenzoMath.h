@@ -44,6 +44,7 @@ class TenzoMath
      * \brief 6 different positions of end-effector
      */
     std::array<std::array<double, 6>, 6> _positions;
+    std::array<std::array<double, 6>, 6> _posCartesian;
 
     /**
      * \brief local gravity acceleration
@@ -138,6 +139,8 @@ public:
      * \param[in] ftReadings force-torque readings from sensor
      */
     void TenzoMath::calculatePos(std::array<double, 6>& curPos, std::array<double, 6> ftReadings);
+
+    std::array<double, 6> jointsToWorld(const std::array<double, 6>& joints);
 
     void newJointsControl();
 
