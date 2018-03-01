@@ -1,23 +1,26 @@
-#ifndef _TENZO_MATH_
-#define _TENZO_MATH_
+#ifndef TENZO_MATH
+#define TENZO_MATH
 
 #include <array>
-#include "fanucModel.h"
-#include "Tenzo.h"
+
+#include "FanucModel.h"
+#include "StrainGauge.h"
+
 
 namespace nikita
 {
+
 class TenzoMath
 {
     /**
     * \brief bias of forces
     */
-    std::array<double, 3> _forcesBias;
+    std::array<double, 3> _forcesBias{};
 
     /**
     * \brief bias of torques
     */
-    std::array<double, 3> _torquesBias;
+    std::array<double, 3> _torquesBias{};
 
     /**
     * \brief weigth of end-effector on every axis in positive direction
@@ -45,11 +48,6 @@ class TenzoMath
     std::array<std::array<double, 6>, 6> _positions;
 
     /**
-    * \brief 6 different positions of end-effector in cartesian coordinates
-    */
-    std::array<std::array<int, 6>, 6> _posCartesian;
-
-    /**
     * \brief local gravity acceleration
     */
     cv::Mat _g;
@@ -62,7 +60,7 @@ class TenzoMath
     /**
     * \brief object for reading from force-torque sensor
     */
-    Tenzo _tenzoData;
+    StrainGauge _tenzoData;
 
     /**
     * \brief collected forces and torques measurements
@@ -91,12 +89,15 @@ class TenzoMath
 
 public:
     TenzoMath();
-
     ~TenzoMath() = default;
+    TenzoMath(const TenzoMath&) = default;
+    TenzoMath(TenzoMath&&) = default;
+    TenzoMath& operator=(const TenzoMath&) = delete;
+    TenzoMath& operator=(TenzoMath&&) = delete;
 
     /**
-     * \brief convertes double array into int array * 1000.0
-     */
+    * \brief convertes double array into int array * 1000
+    */
     static std::array<int, 6> convertToInt(const std::array<double, 6>& coord);
 
     /**
@@ -107,17 +108,17 @@ public:
     /**
     * \brief estimates bias for forces and max weight of end-effector on every axis
     */
-    void doCalibration(); 
+    void doCalibration();
 
     /**
     * \brief calculates gravity compensation matrix for forces
     */
-    std::array<double, 6> gravCompensation(const cv::Mat currRot, std::array<double, 6>& rawData);
+    std::array<double, 6> gravCompensation(const cv::Mat& p6, std::array<double, 6>& rawData);
 
     /**
     * \brief loads calibration data from file
     */
-    void loadCalibData(); 
+    void loadCalibData();
 
     /**
     * \brief return _coordToMove
@@ -126,20 +127,32 @@ public:
     std::string getCoordToMove() const;
 
     /**
-     * \brief 
-     * \param[in] index 
-     */
+    * \brief do one force-torque measurement and store data in matrix
+    * \param[in] index number of your measurement
+    */
     void collectData(const std::size_t index);
 
+    /**
+     * \brief get position for calibration
+     * \param[in] index number of position
+     * \return coordinates in int * 1000
+     */
     std::array<int, 6> getPosition(const std::size_t index) const;
 
     /**
     * \brief calculates new position in cartesian coords and stores it in string
-    * \param[in] curPos current position in cartesian coords in int * 1000.0
+    * \param[in] curPos current position in cartesian coords in int * 1000
     */
-    void calculatePos(std::array<int, 6>& curPos); 
+    void calculatePos(std::array<int, 6>& curPos);
 
+    /**
+     * \brief forward kinematic task
+     * \param[i] joints joints angles 
+     * \return coordinates in int * 1000
+     */
     std::array<double, 6> jointsToWorld(const std::array<double, 6>& joints);
 };
+
 } //namespace nikita
-#endif //_TENZO_MATH_
+
+#endif // TENZO_MATH

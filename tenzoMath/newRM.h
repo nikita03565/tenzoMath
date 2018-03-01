@@ -1,8 +1,11 @@
 #ifndef NEW_RM
 #define NEW_RM
+
 #include <vector>
-#include <opencv2/core.hpp>
 #include <array>
+
+#include <opencv2/core.hpp>
+
 
 /**
 * \brief class for matematics of robot manipulator based on Denavit-Hartenberg parameters
@@ -39,7 +42,7 @@ protected:
     * \param[in] i number of frame
     * \return transform matrix (4x4)
     */
-    cv::Mat prevMatTransform(const int i);
+    cv::Mat prevMatTransform(const std::size_t i);
 
     /**
     * \brief constructor with parameters for any robot

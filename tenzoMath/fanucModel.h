@@ -1,6 +1,8 @@
 #ifndef FANUC_MODEL
 #define FANUC_MODEL
+
 #include "newRM.h"
+
 
 /**
 * \brief class for matematics of robot manipulator Fanuc M20ia based on Denavit-Hartenberg parameters
@@ -12,11 +14,21 @@ class FanucModel : RoboModel
     * \param[in] j joints angles
     * \return Denavit-Hartenberg generalized angles
     */
-    static std::vector<double> jointsToQ(std::array<double, 6> j);
+    static std::vector<double> jointsToQ(const std::array<double, 6>& j);
 
+    /**
+     * \brief rotation matrix from i-th frame to (i + 1)-th frame
+     * \param[in] alpha one of D-H parameters 
+     * \param[in] q generalized D-H angle 
+     * \return rotation matrix 3x3
+     */
     cv::Mat qi(const double& alpha, const double& q) const;
 
+    /**
+     * transformation matrix
+     */
     const cv::Mat _toCamera, _toSixth, _forMovingToCamera;
+
 public:
     static constexpr double PI = 3.14159265;
     /**
@@ -25,24 +37,52 @@ public:
     FanucModel();
 
     ~FanucModel() = default;
+
     /**
     * \brief function for solving forward kinematic task for Fanuc M20ia
     * \param[in] inputjoints joints angles
     * \return coordinates of end-effector in world frame: x, y, z in mm and w, p, r in radians
     */
-    cv::Mat fanucForwardTask(std::array<double, 6> inputjoints);
+    cv::Mat fanucForwardTask(const std::array<double, 6>& inputjoints);
 
+    /**
+     * \brief returns _ToCamera transformation matrix
+     * \return 4x4 transformation matrix
+     */
     cv::Mat getToCamera() const;
 
+    /**
+    * \brief returns _ToSixth transformation matrix
+    * \return 4x4 transformation matrix
+    */
     cv::Mat getToSixth() const;
 
+    /**
+     * \brief returns Denavit-Hartenberg parameters of Fanuc M20ia
+     * \return D-H parameters
+     */
     std::vector<DhParameters> getDhParameters() const;
 
+    /**
+     * \brief calculates 6 Cartesian coordinates from transformation matrix
+     * \param[in] transformMatrix 4x4 matrix
+     * \return 3 coordinates x, y, z and 3 angles w, p, r
+     */
     static std::array<double, 6> getCoordsFromMat(cv::Mat transformMatrix);
 
-    cv::Mat fanucInverseTask(const std::array<double, 6> coord) const;
+    /**
+     * \brief solves inverse kinematic task 
+     * \param[in] coord 6 Cartesian coordinates x, y, z, w, p, r
+     * \return matrix of solutions
+     */
+    cv::Mat fanucInverseTask(const std::array<double, 6>& coord) const;
 
-    cv::Mat fanucInverseTaskNew(const std::array<double, 6> coord) const;
+    /**
+    * \brief solves inverse kinematic task
+    * \param[in] coord 6 Cartesian coordinates x, y, z, w, p, r
+    * \return matrix of solutions
+    */
+    cv::Mat fanucInverseTaskNew(const std::array<double, 6>& coord) const;
 
     /**
     * \brief calculates rotation matrix of end-effector. input angles given in radians
@@ -61,4 +101,4 @@ public:
     static std::array<double, 3> anglesFromMat(const cv::Mat p6);
 };
 
-#endif
+#endif // FANUC_MODEL

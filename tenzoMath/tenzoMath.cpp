@@ -1,20 +1,13 @@
-#include "tenzoMath.h"
-
 #include <fstream>
-#include <thread>
-#include <chrono>
-#include "poly34.h"
-#include <cmath>
 #include <string>
-#include <vector>
-#include <tchar.h>
-#include <ctime>
 #include <iostream>
 
-#include "Tenzo.h"
+#include "TenzoMath.h"
+
 
 namespace nikita
 {
+
 TenzoMath::TenzoMath()
     : _positions({
         {
@@ -23,18 +16,9 @@ TenzoMath::TenzoMath()
             { 0, 0, 0, 0,   0, 180 },
             { 0, 0, 0, 0,  90, 180 },
             { 0, 0, 0, 0,   0, 270 },
-            { 0, 0, 0, 0,   0,  90 }
+            { 0, 0, 0, 0,   0,  90 },
         }}),
-      _posCartesian({ 
-        {
-            { 985'000,      0,   940'000,  -180'000,         0,           0 },
-            { 1'085'000,    0, 1'040'000,   135'000,   -90'000,      45'000 },
-            { 1'085'000,    0, 1'040'000,   135'000,    90'000,     135'000 },
-            { 985'000,      0, 1'140'000,         0,         0,           0 },
-            { 1'085'000,    0, 1'040'000,   -90'000,         0,     -90'000 },
-            { 1'085'000,    0, 1'040'000,    90'000,         0,      90'000 }
-      }}),
-      _tenzoData(_T("COM15"))
+      _tenzoData(L"COM13")
 {
     _g = cv::Mat(3, 1, cv::DataType<double>::type);
     _g.at<double>(0, 0) = 0.;
@@ -83,26 +67,28 @@ std::string TenzoMath::toString(const std::array<double, 6>& coord) const
 
     std::stringstream stringStream;
 
-    std::copy(convert.begin(), convert.end(),
-        std::ostream_iterator<int>(stringStream, " "));
+    std::copy(convert.begin(), convert.end(), std::ostream_iterator<int>(stringStream, " "));
 
     return stringStream.str();
 }
 
 void TenzoMath::collectData(const std::size_t index)
 {
-    getchar();
+    std::cin.get();
 
-    std::array<double, 6> tmp = swapData(_tenzoData.readData());
+    std::array<double, 6> tmp = swapData(_tenzoData.readComStrain());
     for (std::size_t i = 0; i < 6; ++i)
     {
-        _collectedData.at<double>(index, i) = tmp[i];
+        std::cout << tmp[i] << ' ';
+        _collectedData.at<double>(static_cast<int>(index), static_cast<int>(i)) = tmp[i];
     }
+    std::cout << '\n';
 }
 
 std::array<int, 6> TenzoMath::getPosition(const std::size_t index) const
 {
     return convertToInt(_positions.at(index));
+    //return _posCartesian.at(index);
 }
 
 void TenzoMath::doCalibration()
@@ -191,7 +177,7 @@ void TenzoMath::doCalibration()
 
 }
 
-std::array<double, 6> TenzoMath::gravCompensation(const cv::Mat p6, std::array<double, 6>& rawData)
+std::array<double, 6> TenzoMath::gravCompensation(const cv::Mat& p6, std::array<double, 6>& rawData)
 {
     cv::Mat fgmaxCurr(3, 3, CV_64F);
     cv::Mat tmaxCurr(3, 3, CV_64F);
@@ -310,7 +296,7 @@ void TenzoMath::calculatePos(std::array<int, 6>& curPos)
     cv::Mat forces(1, 3, cv::DataType<double>::type);
     cv::Mat torques(1, 3, cv::DataType<double>::type);
 
-    std::array<double, 6> ftReadings = swapData(_tenzoData.readData());
+    std::array<double, 6> ftReadings = swapData(_tenzoData.readComStrain());
     std::array<double, 6> newData = gravCompensation(currRot, ftReadings);
     forces.at<double>(0, 0) = (abs(newData[0]) < threshold ? 0 : newData[0] * coefForces);
     forces.at<double>(0, 1) = (abs(newData[1]) < threshold ? 0 : newData[1] * coefForces);
@@ -338,11 +324,11 @@ std::array<double, 6> TenzoMath::jointsToWorld(const std::array<double, 6>& join
         tmp.at<double>(0, 3), tmp.at<double>(1, 3), tmp.at<double>(2, 3), tmptmp[0] * 180. / FanucModel::PI,
             tmptmp[1] * 180. / FanucModel::PI, tmptmp[2] * 180. / FanucModel::PI
     };
-
 }
 
 std::string TenzoMath::getCoordToMove() const
 {
     return _coordToMove;
 }
+
 } //namespace nikita

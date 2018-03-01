@@ -1,8 +1,11 @@
-#include "fanucModel.h"
-#include <iostream>
-#include <opencv2/core.hpp>
-#include <vector>
+#include "FanucModel.h"
+
 #include "poly34.h"
+#include <opencv2/core.hpp>
+
+#include <iostream>
+#include <vector>
+
 
 FanucModel::FanucModel()
     : RoboModel(std::vector<std::array<double, 4>>{
@@ -26,25 +29,16 @@ std::vector<RoboModel::DhParameters> FanucModel::getDhParameters() const
     return _kinematicChain;
 }
 
-std::vector<double> FanucModel::jointsToQ(std::array<double, 6> j)
+std::vector<double> FanucModel::jointsToQ(const std::array<double, 6>& j)
 {
-    //degrees to radians
-    for (int i = 0; i < 6; ++i)
-    {
-        j[i] *= PI / 180.0;
-    }
-    std::vector<double> q;
-    q.reserve(6);
-    q.push_back(j.at(0));
-    q.push_back(-j.at(1) + PI / 2);
-    q.push_back(j.at(1) + j.at(2));
-    q.push_back(-j.at(3));
-    q.push_back(j.at(4));
-    q.push_back(-j.at(5));
-    return q;
+    return {{
+            j.at(0) * PI / 180.0, -j.at(1) * PI / 180.0 + PI / 2,
+            (j.at(1) + j.at(2)) * PI / 180.0, -j.at(3) * PI / 180.0, 
+            j.at(4) * PI / 180.0, -j.at(5) * PI / 180.0}
+           };
 }
 
-cv::Mat FanucModel::fanucForwardTask(const std::array<double, 6> inputJoints)
+cv::Mat FanucModel::fanucForwardTask(const std::array<double, 6>& inputJoints)
 {
     const std::vector<double> q = jointsToQ(inputJoints);
     return forwardTask(q);
@@ -52,7 +46,7 @@ cv::Mat FanucModel::fanucForwardTask(const std::array<double, 6> inputJoints)
 
 std::array<double, 3> FanucModel::anglesFromMat(const cv::Mat p6)
 {
-    std::array<double, 3> angleVector;
+    std::array<double, 3> angleVector{};
     angleVector.at(0) = atan2(p6.at<double>(2, 1), p6.at<double>(2, 2));
     angleVector.at(1) = atan2(-p6.at<double>(2, 0),
                               sqrt(p6.at<double>(2, 1) * p6.at<double>(2, 1) + p6.at<double>(2, 2) * p6.at<double>(2, 2)));
@@ -64,14 +58,10 @@ std::array<double, 6> FanucModel::getCoordsFromMat(cv::Mat transformMatrix)
 {
     std::array<double, 3> wprAngles = anglesFromMat(transformMatrix);
 
-    std::array<double, 6> res;
-    res.at(0) = transformMatrix.at<double>(0, 3);
-    res.at(1) = transformMatrix.at<double>(1, 3);
-    res.at(2) = transformMatrix.at<double>(2, 3);
-    res.at(3) = wprAngles.at(0);
-    res.at(4) = wprAngles.at(1);
-    res.at(5) = wprAngles.at(2);
-    return res;
+    return {{
+            transformMatrix.at<double>(0, 3), transformMatrix.at<double>(1, 3), transformMatrix.at<double>(2, 3),
+            wprAngles.at(0), wprAngles.at(1), wprAngles.at(2)
+           }};
 }
 
 
@@ -117,7 +107,7 @@ cv::Mat FanucModel::rotMatrix(const double& w, const double& p, const double& r)
     return mz * my * mx;
 }
 
-cv::Mat FanucModel::fanucInverseTask(const std::array<double, 6> coord) const
+cv::Mat FanucModel::fanucInverseTask(const std::array<double, 6>& coord) const
 {
     std::vector<RoboModel::DhParameters> param = getDhParameters();
 
@@ -248,7 +238,7 @@ cv::Mat FanucModel::fanucInverseTask(const std::array<double, 6> coord) const
             ind.emplace_back(it);
         }
     }
-    cv::Mat thetaRes(ind.size(), 6, cv::DataType<double>::type);
+    cv::Mat thetaRes(static_cast<int>(ind.size()), 6, cv::DataType<double>::type);
     for (int it = 0; it < ind.size(); ++it)
     {
         thetaRes.at<double>(it, 0) = theta.at<double>(ind[it], 0);
@@ -263,7 +253,7 @@ cv::Mat FanucModel::fanucInverseTask(const std::array<double, 6> coord) const
     for (int it = 0; it < thetaRes.rows; ++it)
     {
         cv::Mat r36(3, 3, cv::DataType<double>::type), r03(3, 3, cv::DataType<double>::type);
-        std::array<double, 6> q;
+        std::array<double, 6> q{};
         q[0] = thetaRes.at<double>(it, 0);
         q[1] = -thetaRes.at<double>(it, 1) + PI / 2;
         q[2] = thetaRes.at<double>(it, 2) + thetaRes.at<double>(it, 1);
@@ -311,7 +301,7 @@ cv::Mat FanucModel::fanucInverseTask(const std::array<double, 6> coord) const
         }
     }
 
-    cv::Mat thetaFinal(indFinal.size(), 6, cv::DataType<double>::type);
+    cv::Mat thetaFinal(static_cast<int>(indFinal.size()), 6, cv::DataType<double>::type);
     for (int it = 0; it < indFinal.size(); ++it)
     {
         thetaFinal.at<double>(it, 0) = thetaPrefinal.at<double>(indFinal[it], 0);
@@ -325,7 +315,7 @@ cv::Mat FanucModel::fanucInverseTask(const std::array<double, 6> coord) const
     return thetaFinal * 180. / PI;
 }
 
-cv::Mat FanucModel::fanucInverseTaskNew(const std::array<double, 6> coord) const
+cv::Mat FanucModel::fanucInverseTaskNew(const std::array<double, 6>& coord) const
 {
     cv::Mat p6 = rotMatrix(coord[3] / 180. * PI, coord[4] / 180. * PI, coord[5] / 180. * PI);
     double xc = coord[0] - p6.at<double>(0, 2) * 100.;
