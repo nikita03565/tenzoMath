@@ -1,11 +1,13 @@
-#include "newRM.h"
+#include "RoboModel.h"
 
+namespace nikita
+{
 RoboModel::DhParameters::
-DhParameters(const double d, const double q, const double a, const double alpha)
+    DhParameters(const double d, const double q, const double a, const double alpha)
     : _dParam(d),
-      _qParam(q),
-      _aParam(a),
-      _alphaParam(alpha)
+    _qParam(q),
+    _aParam(a),
+    _alphaParam(alpha)
 {
 }
 
@@ -54,3 +56,4 @@ cv::Mat RoboModel::forwardTask(std::vector<double> inputq)
 
     return transformMatrix;
 }
+} //namespace nikita

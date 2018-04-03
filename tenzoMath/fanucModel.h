@@ -1,9 +1,10 @@
 #ifndef FANUC_MODEL
 #define FANUC_MODEL
 
-#include "newRM.h"
+#include "RoboModel.h"
 
-
+namespace nikita
+{
 /**
 * \brief class for matematics of robot manipulator Fanuc M20ia based on Denavit-Hartenberg parameters
 */
@@ -18,19 +19,18 @@ class FanucModel : RoboModel
 
     /**
      * \brief rotation matrix from i-th frame to (i + 1)-th frame
-     * \param[in] alpha one of D-H parameters 
-     * \param[in] q generalized D-H angle 
+     * \param[in] alpha one of D-H parameters
+     * \param[in] q generalized D-H angle
      * \return rotation matrix 3x3
      */
     cv::Mat qi(const double& alpha, const double& q) const;
+public:
 
     /**
-     * transformation matrix
+     * \brief constant Pi
      */
-    const cv::Mat _toCamera, _toSixth, _forMovingToCamera;
-
-public:
     static constexpr double PI = 3.14159265;
+
     /**
     * \brief default constructor with Fanuc M20ia parameters
     */
@@ -46,32 +46,7 @@ public:
     cv::Mat fanucForwardTask(const std::array<double, 6>& inputjoints);
 
     /**
-     * \brief returns _ToCamera transformation matrix
-     * \return 4x4 transformation matrix
-     */
-    cv::Mat getToCamera() const;
-
-    /**
-    * \brief returns _ToSixth transformation matrix
-    * \return 4x4 transformation matrix
-    */
-    cv::Mat getToSixth() const;
-
-    /**
-     * \brief returns Denavit-Hartenberg parameters of Fanuc M20ia
-     * \return D-H parameters
-     */
-    std::vector<DhParameters> getDhParameters() const;
-
-    /**
-     * \brief calculates 6 Cartesian coordinates from transformation matrix
-     * \param[in] transformMatrix 4x4 matrix
-     * \return 3 coordinates x, y, z and 3 angles w, p, r
-     */
-    static std::array<double, 6> getCoordsFromMat(cv::Mat transformMatrix);
-
-    /**
-     * \brief solves inverse kinematic task 
+     * \brief solves inverse kinematic task
      * \param[in] coord 6 Cartesian coordinates x, y, z, w, p, r
      * \return matrix of solutions
      */
@@ -92,13 +67,6 @@ public:
     * \return rotation matrix 3*3
     */
     static cv::Mat rotMatrix(const double& w, const double& p, const double& r);
-
-    /**
-    * \brief function to calculate three rotation angles from transformation matrix
-    * \param[in] p6 transofrmation matrix(4x4) or rotation matrix(3x3)
-    * \return three Tait-Bryan angles
-    */
-    static std::array<double, 3> anglesFromMat(const cv::Mat p6);
 };
-
+} // nampespace nikita
 #endif // FANUC_MODEL

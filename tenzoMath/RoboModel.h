@@ -1,12 +1,13 @@
-#ifndef NEW_RM
-#define NEW_RM
+#ifndef ROBOMODEL_H
+#define ROBOMODEL_H
 
-#include <vector>
 #include <array>
+#include <vector>
 
 #include <opencv2/core.hpp>
 
-
+namespace nikita
+{
 /**
 * \brief class for matematics of robot manipulator based on Denavit-Hartenberg parameters
 */
@@ -14,20 +15,37 @@ class RoboModel
 {
 public:
     /**
-    * \brief struct of D-H parameters
-    *
-    * d: offset along previous z to the common normal;
-    * q: angle about previous  z, from old  x to new  x;
-    * a: offset along x in current frame;
-    * alpha: angle about x in current frame;
+    * \brief struct of Denavit-Hartenberg parameters
     */
     struct DhParameters
     {
+        /**
+         * \brief offset along previous z to the common normal
+         */
         double _dParam;
+
+        /**
+        * \brief angle about previous  z, from old  x to new  x
+        */
         double _qParam;
+
+        /**
+        * \brief offset along x in current frame
+        */
         double _aParam;
+
+        /**
+        * \brief angle about x in current frame
+        */
         double _alphaParam;
 
+        /**
+         * \brief constructor with parameters
+         * \param[in] d D-H parameter
+         * \param[in] q D-H parameter
+         * \param[in] a D-H parameter
+         * \param[in] alpha D-H parameter
+         */
         DhParameters(const double d, const double q, const double a, const double alpha);
     };
 
@@ -59,5 +77,5 @@ protected:
     */
     cv::Mat forwardTask(std::vector<double> inputq);
 };
-
-#endif // NEW_RM
+} //namespace nikita
+#endif // ROBOMODEL_H
