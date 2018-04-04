@@ -4,18 +4,19 @@
 #include "TenzoCalibration.h"
 #include "TenzoMathExtension.h"
 
+
 namespace nikita
 {
 
-TenzoCalibration::TenzoCalibration() :
-    _positions({ {
+TenzoCalibration::TenzoCalibration() 
+    : _positions({{
         { 0, 0, 0, 0, -90,   0 },
         { 0, 0, 0, 0,   0,   0 },
         { 0, 0, 0, 0,   0, 180 },
         { 0, 0, 0, 0,  90, 180 },
         { 0, 0, 0, 0,   0, 270 },
         { 0, 0, 0, 0,   0,  90 },
-    } })
+    }})
 {
     _g = cv::Mat(3, 1, cv::DataType<double>::type);
     _g.at<double>(0, 0) = 0.;
@@ -32,6 +33,7 @@ TenzoCalibration::TenzoCalibration() :
 
     _collectedData = cv::Mat(6, 6, cv::DataType<double>::type);
 }
+
 void  TenzoCalibration::calculateCalibration()
 {
     _forcesBias[0] = (_collectedData.at<double>(1, 0) + _collectedData.at<double>(2, 0)) / 2.0;
@@ -103,17 +105,33 @@ void  TenzoCalibration::calculateCalibration()
         << _torquesBias[1] << ' ' << _torquesBias[2] << '\n';
 
     for (int i = 0; i < 3; ++i)
+    {
         for (int j = 0; j < 3; ++j)
+        {
             out << _fgmax.at<double>(i, j) << ' ';
+        }
+    }
     for (int i = 0; i < 3; ++i)
+    {
         for (int j = 0; j < 3; ++j)
+        {
             out << _fgmaxNeg.at<double>(i, j) << ' ';
+        }
+    }
     for (int i = 0; i < 3; ++i)
+    {
         for (int j = 0; j < 3; ++j)
+        {
             out << _tmax.at<double>(i, j) << ' ';
+        }
+    }
     for (int i = 0; i < 3; ++i)
+    {
         for (int j = 0; j < 3; ++j)
+        {
             out << _tmaxNeg.at<double>(i, j) << ' ';
+        }
+    }
     out.close();
 }
 
@@ -140,4 +158,5 @@ void  TenzoMathExtension::loadCalibData()
             input >> _tmaxNeg.at<double>(i, j);
     input.close();
 }
+
 } //namespace nikita

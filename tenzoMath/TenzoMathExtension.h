@@ -5,21 +5,22 @@
 #include "StrainGauge.h"
 #include "tenzoMath.h"
 
+
 namespace nikita
 {
 
 /**
-* \brief class for communication with Vasily's client
+* \brief Class for communication with Vasily's client.
 */
 class TenzoMathExtension : public TenzoMath
 {
     /**
-    * \brief object for reading from force-torque sensor
+    * \brief Object for reading from force-torque sensor.
     */
     StrainGauge _tenzoData;
 
     /**
-    * \brief string of cartesian coords
+    * \brief String of cartesian coords.
     */
     std::string _coordToMove;
 
@@ -32,63 +33,63 @@ public:
     TenzoMathExtension& operator=(TenzoMathExtension&&) = delete;
 
     /**
-    * \brief convertes double array into int array * 1000
+    * \brief Convertes double array into int array * 1000.
     */
     static std::array<int, 6> convertToInt(const std::array<double, 6>& coord);
 
     /**
-    * \brief convertes int array * 1000.0 into double array
+    * \brief Convertes int array * 1000.0 into double array.
     */
     static std::array<double, 6> convertToDouble(const std::array<int, 6>& coord);
 
     /**
-    * \brief loads calibration data from file
+    * \brief Loads calibration data from file.
     */
     void loadCalibData();
 
     /**
-    * \brief return _coordToMove
-    * \return string of cartesian coords
+    * \brief Return _coordToMove.
+    * \return String of cartesian coords.
     */
     std::string getCoordToMove() const;
 
     /**
-    * \brief do one force-torque measurement and store data in matrix
-    * \param[in] index number of your measurement
+    * \brief Do one force-torque measurement and store data in matrix.
+    * \param[in] index Number of your measurement.
     */
     void collectData(const std::size_t index);
 
     /**
-    * \brief get position for calibration
-    * \param[in] index number of position
-    * \return coordinates in int * 1000
+    * \brief Get position for calibration.
+    * \param[in] index Number of position.
+    * \return Coordinates in int * 1000.
     */
     std::array<int, 6> getPosition(const std::size_t index) const;
 
     /**
-    * \brief forward kinematic task
-    * \param[in] joints joints angles
-    * \return coordinates in int * 1000
+    * \brief Forward kinematic task.
+    * \param[in] joints Joints angles.
+    * \return Coordinates in int * 1000.
     */
     std::array<double, 6> jointsToWorld(const std::array<double, 6>& joints);
 
     /**
-    * \brief converts array to of cartesian coords to string
-    * \param[in] coord input array
-    * \return string ready to sending
+    * \brief Converts array to of cartesian coords to string.
+    * \param[in] coord Input array.
+    * \return String ready to sending.
     */
     std::string toString(const std::array<double, 6>& coord) const;
 
     /**
-     * \brief calculates new position based on force-torque measurements
-     * \param[in] curPos current posiotion in cartesian coordianes
+     * \brief Calculates new position based on force-torque measurements that are read inside of this method.
+     * \param[in] curPos Current posiotion in cartesian coordianes.
      */
     void calculatePos(std::array<int, 6>& curPos);
 
     /**
-    * \brief swaps x, y, z axes so sensor frame is the same as end-effector frame
-    * \param[in] data raw readings from sensor
-    * \return new data
+    * \brief Swaps x, y, z axes so sensor frame is the same as end-effector frame.
+    * \param[in] data Raw readings from sensor.
+    * \return New data.
     */
     static std::array<double, 6> swapData(const std::array<double, 6>& data);
 };

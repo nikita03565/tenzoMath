@@ -1,20 +1,21 @@
 #include "RoboModel.h"
 
+
 namespace nikita
 {
 RoboModel::DhParameters::
     DhParameters(const double d, const double q, const double a, const double alpha)
     : _dParam(d),
-    _qParam(q),
-    _aParam(a),
-    _alphaParam(alpha)
+      _qParam(q),
+      _aParam(a),
+      _alphaParam(alpha)
 {
 }
 
-RoboModel::RoboModel(std::vector<std::array<double, 4>> input)
+RoboModel::RoboModel(std::vector<std::array<double, 4>>& input)
 {
     _kinematicChain.reserve(input.size());
-    for (auto& i : input)
+    for (const auto& i : input)
     {
         _kinematicChain.emplace_back(i[0], i[1], i[2], i[3]);
     }
@@ -56,4 +57,5 @@ cv::Mat RoboModel::forwardTask(std::vector<double> inputq)
 
     return transformMatrix;
 }
+
 } //namespace nikita

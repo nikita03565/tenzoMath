@@ -4,6 +4,7 @@
 
 #include "TenzoMath.h"
 
+
 namespace nikita
 {
 
@@ -123,4 +124,5 @@ void TenzoMath::calculateNextPos(std::array<int, 6>& curPos, std::array<int, 6>&
     curPos[4] -= static_cast<int>(torques.at<double>(0, 1));
     curPos[5] -= static_cast<int>(torques.at<double>(0, 2));
 }
+
 } //namespace nikita

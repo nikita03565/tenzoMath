@@ -6,6 +6,7 @@
 #include <iostream>
 #include <vector>
 
+
 namespace nikita
 {
 FanucModel::FanucModel()
@@ -19,15 +20,15 @@ FanucModel::FanucModel()
          { 130, PI / 2, -90, 0 },
          { -190, 0, 0, 0 }
 })
-{}
+{
+}
 
 std::vector<double> FanucModel::jointsToQ(const std::array<double, 6>& j)
 {
-    return { {
-            j.at(0) * PI / 180.0, -j.at(1) * PI / 180.0 + PI / 2,
-            (j.at(1) + j.at(2)) * PI / 180.0, -j.at(3) * PI / 180.0,
-            j.at(4) * PI / 180.0, -j.at(5) * PI / 180.0}
-    };
+    return  { j.at(0) * PI / 180.0, -j.at(1) * PI / 180.0 + PI / 2,
+             (j.at(1) + j.at(2)) * PI / 180.0, -j.at(3) * PI / 180.0,
+              j.at(4) * PI / 180.0, -j.at(5) * PI / 180.0 
+            };
 }
 
 cv::Mat FanucModel::fanucForwardTask(const std::array<double, 6>& inputJoints)
@@ -294,5 +295,6 @@ cv::Mat FanucModel::fanucInverseTaskNew(const std::array<double, 6>& coord) cons
     double zc = coord[2] - p6.at<double>(2, 2) * 100.;
     return fanucInverseTask({ xc, yc, zc, coord[3], coord[4], coord[5] });
 }
+
 } //namespace nikita
 

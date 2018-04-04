@@ -1,6 +1,7 @@
 #include "fanucModelExtension.h"
 #include "TenzoMathExtension.h"
 
+
 namespace nikita
 {
 
@@ -51,4 +52,5 @@ std::array<int, 6> nikita::TenzoMathExtension::getPosition(const std::size_t ind
     return convertToInt(_positions.at(index));
     //return _posCartesian.at(index);
 }
+
 } // namespace nikita
