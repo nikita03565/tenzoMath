@@ -119,20 +119,28 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="Fanuc.cpp" />
     <ClCompile Include="fanucModel.cpp" />
-    <ClCompile Include="newRM.cpp" />
+    <ClCompile Include="fanucModelExtension.cpp" />
+    <ClCompile Include="RoboModel.cpp" />
     <ClCompile Include="poly34.cpp" />
     <ClCompile Include="Source.cpp" />
+    <ClCompile Include="StrainGauge.cpp" />
+    <ClCompile Include="TenzoCalibration.cpp" />
     <ClCompile Include="tenzoMath.cpp" />
+    <ClCompile Include="TenzoMathExtension.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="Fanuc.h" />
     <ClInclude Include="fanucModel.h" />
-    <ClInclude Include="newRM.h" />
+    <ClInclude Include="fanucModelExtension.h" />
+    <ClInclude Include="RoboModel.h" />
     <ClInclude Include="poly34.h" />
-    <ClInclude Include="Tenzo.h" />
+    <ClInclude Include="StrainGauge.h" />
+    <ClInclude Include="TenzoCalibration.h" />
     <ClInclude Include="tenzoMath.h" />
+    <ClInclude Include="TenzoMathExtension.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="ClassDiagram.cd" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

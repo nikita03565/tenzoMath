@@ -18,40 +18,58 @@
     <ClCompile Include="tenzoMath.cpp">
       <Filter>Resource Files</Filter>
     </ClCompile>
-    <ClCompile Include="Fanuc.cpp">
-      <Filter>Resource Files</Filter>
-    </ClCompile>
     <ClCompile Include="fanucModel.cpp">
-      <Filter>Resource Files</Filter>
-    </ClCompile>
-    <ClCompile Include="newRM.cpp">
       <Filter>Resource Files</Filter>
     </ClCompile>
     <ClCompile Include="poly34.cpp">
       <Filter>Resource Files</Filter>
     </ClCompile>
+    <ClCompile Include="StrainGauge.cpp">
+      <Filter>Resource Files</Filter>
+    </ClCompile>
     <ClCompile Include="Source.cpp">
       <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="RoboModel.cpp">
+      <Filter>Resource Files</Filter>
+    </ClCompile>
+    <ClCompile Include="fanucModelExtension.cpp">
+      <Filter>Resource Files</Filter>
+    </ClCompile>
+    <ClCompile Include="TenzoCalibration.cpp">
+      <Filter>Resource Files</Filter>
+    </ClCompile>
+    <ClCompile Include="TenzoMathExtension.cpp">
+      <Filter>Resource Files</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="tenzoMath.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Fanuc.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="fanucModel.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="newRM.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="Tenzo.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="poly34.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="StrainGauge.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="RoboModel.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="fanucModelExtension.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="TenzoCalibration.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="TenzoMathExtension.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="ClassDiagram.cd" />
   </ItemGroup>
 </Project>

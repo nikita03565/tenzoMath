@@ -1,147 +1,47 @@
-#ifndef _TENZO_MATH_
-#define _TENZO_MATH_
+#ifndef TENZO_MATH
+#define TENZO_MATH
 
 #include <array>
-#include <iostream>
-#include "fanucModel.h"
-#include "Tenzo.h"
-#include "Fanuc.h"
+
+#include "FanucModelExtension.h"
+#include "StrainGauge.h"
+#include "TenzoCalibration.h"
 
 
-class TenzoMath
+namespace nikita
 {
-    /**
-     * \brief bias of forces
-     */
-    std::array<double, 3> _forcesBias;
 
-    /**
-    * \brief bias of torques
-    */
-    std::array<double, 3> _torquesBias;
-
-    /**
-     * \brief weigth of end-effector on every axis in positive direction
-     */
-    cv::Mat _fgmax;
-
-    /**
-    * \brief torque of end-effector on every axis in positive direction
-    */
-    cv::Mat _tmax;
-
-    /**
-    * \brief torque of end-effector on every axis in negative direction
-    */
-    cv::Mat _tmaxNeg;
-
-    /**
-    * \brief weigth of end-effector on every axis in negative direction
-    */
-    cv::Mat _fgmaxNeg;
-
-    /**
-     * \brief 6 different positions of end-effector
-     */
-    std::array<std::array<double, 6>, 6> _positions;
-
-    /**
-     * \brief local gravity acceleration
-     */
-    cv::Mat _g;
-
-    /**
-    * \brief object for connecting with fanuc
-    */
-    FanucM20iA _fanuc;
-
-    /**
-     * \brief is this app connected to robot
-     */
-    bool _isConnectedFanuc;
-
-    /**
-     * \brief object for math model of fanuc
-     */
-    FanucModel _model;
-
-    /**
-    * \brief collected forces and torques measurements
-    */
-    cv::Mat _collectedData;
-
-    /**
-     * \brief stored data from force-torque sensor
-     */
-    cv::Mat _tmp;
-
-    /**
-     * \brief string of cartesian coords
-     */
-    std::string _coordToMove;
-
-    /**
-     * \brief swaps x, y, z axes so sensor frame is the same as end-effector frame
-     * \param[in] data raw readings from sensor
-     * \return new data
-     */
-    std::array<double, 6> swapData(const std::array<double, 6> data) const;
-
-
-    /**
-     * \brief converts array to of cartesian coords to string
-     * \param[in] coord input array
-     * \return string ready to sending
-     */
-    std::string toString(std::array<double, 6> coord) const;
-
-    const double _xMin;
-    const double _yMin;
-    const double _zMin;
-    const double _xMax;
-    const double _yMax; 
-    const double _zMax;
-public:
+/**
+ * \brief Class for gravity compensation and calculating next position in cartesian coordinates to provide force-torque control.
+ */
+class TenzoMath : public TenzoCalibration
+{
+   
+protected:
     TenzoMath();
-
     ~TenzoMath() = default;
+    TenzoMath(const TenzoMath&) = default;
+    TenzoMath(TenzoMath&&) = default;
+    TenzoMath& operator=(const TenzoMath&) = delete;
+    TenzoMath& operator=(TenzoMath&&) = delete;
 
     /**
-     * \brief estimates bias for forces and max weight of end-effector on every axis
-     */
-    void doCalibration();
+    * \brief Object for math model of fanuc.
+    */
+    FanucModelExtension _model;
+public:
+    /**
+    * \brief Calculates gravity compensation matrix for forces.
+    */
+    std::array<double, 6> gravCompensation(const cv::Mat& p6, std::array<int, 6>& rawData);
 
     /**
-     * \brief calculates gravity compensation matrix for forces
-     */
-    std::array<double, 6> gravCompensation(cv::Mat currRot, std::array<double, 6> rawData);
-
-    /**
-     * \brief loads calibration data from file
-     */
-    void loadCalibData();
-
-    /**
-     * \brief provides force-torque control for robot
-     */
-    void ftControlCartesianCoord();
-
-    /**
-     * \brief return _coordToMove
-     * \return string of cartesian coords
-     */
-    std::string getCoordToMove() const;
-
-    /**
-     * \brief calculates new position in cartesian coords and stores it in string
-     * \param[in] curPos current position in cartesian coords
-     * \param[in] ftReadings force-torque readings from sensor
-     */
-    void TenzoMath::calculatePos(std::array<double, 6>& curPos, std::array<double, 6> ftReadings);
-
-    void newJointsControl();
-
-    static std::array<double, 6> chooseNearestPose(cv::Mat res, std::array<double, 6> prevPos);
+    * \brief Calculates new position in cartesian coords and stores it in string.
+    * \param[in] curPos Current position in cartesian coords in int * 1000.
+    */
+    void calculateNextPos(std::array<int, 6>& curPos, std::array<int, 6>& readings);
 };
 
-#endif //_TENZO_MATH_
+} //namespace nikita
+
+#endif // TENZO_MATH
