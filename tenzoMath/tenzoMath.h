@@ -70,18 +70,11 @@ class TenzoMath
     */
     cv::Mat _collectedData;
 
-    /**
-     * \brief calculates rotation matrix of end-effector. input angles given in radians
-     * \param[in] w angle of rotation around x axis
-     * \param[in] p angle of rotation around y axis
-     * \param[in] r angle of rotation around z axis
-     * \return rotation matrix 3*3
-     */
-    cv::Mat TenzoMath::rotMatrix(const double& w, const double& p, const double& r) const;
+    cv::Mat _tmp;
 
-    std::array<double, 6> chooseNearestPose(cv::Mat res, std::array<double, 6> prevPos) const;
+    cv::Mat _r;
 
-    cv::Mat qi(const double& alpha, const double& q) const;
+    std::array<double, 6> swapData(const std::array<double, 6> data) const;
 
     const double _xMin;
     const double _yMin;
@@ -90,9 +83,6 @@ class TenzoMath
     const double _yMax; 
     const double _zMax;
 public:
-
-    cv::Mat inverseTask(const std::array<double, 6> coord) const;
-
     TenzoMath();
 
     ~TenzoMath() = default;
@@ -116,6 +106,10 @@ public:
      * \brief provides force-torque control for robot
      */
     void ftControlCartesianCoord();
+
+    void newJointsControl();
+
+    static std::array<double, 6> chooseNearestPose(cv::Mat res, std::array<double, 6> prevPos);
 
     void ftControlJoints();
 

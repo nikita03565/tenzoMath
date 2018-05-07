@@ -24,6 +24,7 @@ public:
         double _qParam;
         double _aParam;
         double _alphaParam;
+
         DhParameters(const double d, const double q, const double a, const double alpha);
     };
 

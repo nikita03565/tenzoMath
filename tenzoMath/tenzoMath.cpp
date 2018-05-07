@@ -6,6 +6,10 @@
 #include <cmath>
 #include <string>
 #include <vector>
+#include <tchar.h>
+#include <ctime>
+#include <deque>
+
 void printCvMat(cv::Mat t, const char str[] = "some matrix")
 {
     std::cout << str << ":\n";
@@ -21,28 +25,27 @@ void printCvMat(cv::Mat t, const char str[] = "some matrix")
     std::cout << "-------------------------" << std::endl;
 }
 
+
+
 TenzoMath::TenzoMath() : _xMin (680.),
                          _yMin (-465.),
                          _zMin ( 520.),
                          _xMax ( 1380.),
                          _yMax ( 465.),
-                         _zMax ( 1300.)
+                         _zMax ( 1300.),
+                         _r((cv::Mat_<double>(3, 3) << 0, -1, 0, 1, 0, 0, 0, 0, -1)),
+                         _g((cv::Mat_<double>(3, 1) << 0, 0, -1))
 {
     _positions = {
         {
-            { 0, 0, 0, 0, -90, 0},
-            { 0, 0, 0, 0, 0, 0},
-            { 0, 0, 0, 0, 0, 180},
-            { 0, 0, 0, 0, 90, 180},
-            { 0, 0, 0, 0, 0, 270},
-            { 0, 0, 0, 0, 0, 90}
+            { 0, 0, 0, 0, -90, 0 },
+            { 0, 0, 0, 0, 0, 0 },
+            { 0, 0, 0, 0, 0, 180 },
+            { 0, 0, 0, 0, 90, 180 },
+            { 0, 0, 0, 0, 0, 270 },
+            { 0, 0, 0, 0, 0, 90 }
         }
     };
-
-    _g = cv::Mat(3, 1, cv::DataType<double>::type);
-    _g.at<double>(0, 0) = 0.;
-    _g.at<double>(1, 0) = 0.;
-    _g.at<double>(2, 0) = -1;
 
     _fgmax = cv::Mat(3, 3, cv::DataType<double>::type);
 
@@ -52,9 +55,35 @@ TenzoMath::TenzoMath() : _xMin (680.),
 
     _fgmaxNeg = cv::Mat(3, 3, cv::DataType<double>::type);
 
-    _collectedData = cv::Mat(6, 6, cv::DataType<double>::type);
+    _tmp = cv::Mat(6, 6, cv::DataType<double>::type);
 
     _isConnectedFanuc = false;
+}
+
+std::array<double, 6> TenzoMath::swapData(const std::array<double, 6> data) const
+{
+   /* for (int i = 0; i < 6; ++i)
+    {
+        std::cout << data[i] << '\t';
+    }*/
+    cv::Mat f = cv::Mat::zeros(1, 3, cv::DataType<double>::type);
+    cv::Mat t = cv::Mat::zeros(1, 3, cv::DataType<double>::type);
+    std::array<double, 6> tmp;
+    f.at<double>(0, 0) = data[0];
+    f.at<double>(0, 1) = data[1];
+    f.at<double>(0, 2) = data[2];
+    t.at<double>(0, 0) = data[3];
+    t.at<double>(0, 1) = -data[4];
+    t.at<double>(0, 2) = data[5];
+    t *= _r;
+    f *= _r;
+    tmp[0] = f.at<double>(0, 0);
+    tmp[1] = f.at<double>(0, 1);
+    tmp[2] = f.at<double>(0, 2);
+    tmp[3] = t.at<double>(0, 0);
+    tmp[4] = t.at<double>(0, 1);
+    tmp[5] = t.at<double>(0, 2);
+    return tmp;
 }
 
 void TenzoMath::doCalibration()
@@ -65,7 +94,12 @@ void TenzoMath::doCalibration()
         _fanuc.setJointFrame();
         _isConnectedFanuc = true;
     }
-    Tenzo tenzoData(L"COM6");
+    Tenzo tenzoData(_T("COM6"));
+
+    cv::Mat f = cv::Mat::zeros(1, 3, cv::DataType<double>::type);
+    cv::Mat t = cv::Mat::zeros(1, 3, cv::DataType<double>::type);
+    double Rtmp[9] = { 0, -1, 0, 1, 0, 0, 0, 0, -1 };
+    cv::Mat R(3, 3, cv::DataType<double>::type, Rtmp);
 
     for (int i = 0; i < 6; ++i)
     {
@@ -78,75 +112,79 @@ void TenzoMath::doCalibration()
         getchar();
 
         //readData and put it in arrays
-        std::array<double, 6> tmp = tenzoData.readData();
-        _collectedData.at<double>(i, 0) = tmp[1];
-        _collectedData.at<double>(i, 1) = -tmp[0];
-        _collectedData.at<double>(i, 2) = -tmp[2];
-        _collectedData.at<double>(i, 3) = -tmp[4];
-        _collectedData.at<double>(i, 4) = tmp[3];
-        _collectedData.at<double>(i, 5) = tmp[5];
+        std::array<double, 6> tmp = swapData(tenzoData.readData());
+        
+        _tmp.at<double>(i, 0) = tmp[0];
+        _tmp.at<double>(i, 1) = tmp[1];
+        _tmp.at<double>(i, 2) = tmp[2];
+        _tmp.at<double>(i, 3) = tmp[3];
+        _tmp.at<double>(i, 4) = tmp[4];
+        _tmp.at<double>(i, 5) = tmp[5];
     }
-    std::ofstream collectedData("collectedData.txt");
+
+    _fanuc.goToCoordinates(0, 0, 0, 0, -90, 0);
+
+    std::ofstream tmp("tmp.txt");
     for (int i = 0; i < 6; ++i)
         for (int j = 0; j < 6; ++j)
-            collectedData << _collectedData.at<double>(i, j) << ' ';
-    collectedData.close();
+            tmp << _tmp.at<double>(i, j) << ' ';
+    tmp.close();
 
-    _forcesBias[0] = (_collectedData.at<double>(1, 0) + _collectedData.at<double>(2, 0)) / 2.0;
-    _forcesBias[1] = (_collectedData.at<double>(4, 1) + _collectedData.at<double>(5, 1)) / 2.0;
-    _forcesBias[2] = (_collectedData.at<double>(0, 2) + _collectedData.at<double>(3, 2)) / 2.0;
+    _forcesBias[0] = (_tmp.at<double>(1, 0) + _tmp.at<double>(2, 0)) / 2.0;
+    _forcesBias[1] = (_tmp.at<double>(4, 1) + _tmp.at<double>(5, 1)) / 2.0;
+    _forcesBias[2] = (_tmp.at<double>(0, 2) + _tmp.at<double>(3, 2)) / 2.0;
 
-    _torquesBias[0] = (_collectedData.at<double>(1, 3) + _collectedData.at<double>(2, 3)) / 2.0;
-    _torquesBias[1] = (_collectedData.at<double>(4, 4) + _collectedData.at<double>(5, 4)) / 2.0;
-    _torquesBias[2] = (_collectedData.at<double>(0, 5) + _collectedData.at<double>(3, 5)) / 2.0;
+    _torquesBias[0] = (_tmp.at<double>(1, 3) + _tmp.at<double>(2, 3)) / 2.0;
+    _torquesBias[1] = (_tmp.at<double>(4, 4) + _tmp.at<double>(5, 4)) / 2.0;
+    _torquesBias[2] = (_tmp.at<double>(0, 5) + _tmp.at<double>(3, 5)) / 2.0;
 
-    _fgmax.at<double>(0, 0) = _collectedData.at<double>(2, 0) - _forcesBias[0];
-    _fgmax.at<double>(0, 1) = _collectedData.at<double>(2, 1) - _forcesBias[1];
-    _fgmax.at<double>(0, 2) = _collectedData.at<double>(2, 2) - _forcesBias[2];
+    _fgmax.at<double>(0, 0) = _tmp.at<double>(2, 0) - _forcesBias[0];
+    _fgmax.at<double>(0, 1) = _tmp.at<double>(2, 1) - _forcesBias[1];
+    _fgmax.at<double>(0, 2) = _tmp.at<double>(2, 2) - _forcesBias[2];
 
-    _fgmax.at<double>(1, 0) = _collectedData.at<double>(4, 0) - _forcesBias[0];
-    _fgmax.at<double>(1, 1) = _collectedData.at<double>(4, 1) - _forcesBias[1];
-    _fgmax.at<double>(1, 2) = _collectedData.at<double>(4, 2) - _forcesBias[2];
+    _fgmax.at<double>(1, 0) = _tmp.at<double>(4, 0) - _forcesBias[0];
+    _fgmax.at<double>(1, 1) = _tmp.at<double>(4, 1) - _forcesBias[1];
+    _fgmax.at<double>(1, 2) = _tmp.at<double>(4, 2) - _forcesBias[2];
 
-    _fgmax.at<double>(2, 0) = _collectedData.at<double>(0, 0) - _forcesBias[0];
-    _fgmax.at<double>(2, 1) = _collectedData.at<double>(0, 1) - _forcesBias[1];
-    _fgmax.at<double>(2, 2) = _collectedData.at<double>(0, 2) - _forcesBias[2];
+    _fgmax.at<double>(2, 0) = _tmp.at<double>(0, 0) - _forcesBias[0];
+    _fgmax.at<double>(2, 1) = _tmp.at<double>(0, 1) - _forcesBias[1];
+    _fgmax.at<double>(2, 2) = _tmp.at<double>(0, 2) - _forcesBias[2];
 
-    _tmax.at<double>(0, 0) = _collectedData.at<double>(2, 3) - _torquesBias[0];
-    _tmax.at<double>(0, 1) = _collectedData.at<double>(2, 4) - _torquesBias[1];
-    _tmax.at<double>(0, 2) = _collectedData.at<double>(2, 5) - _torquesBias[2];
+    _tmax.at<double>(0, 0) = _tmp.at<double>(2, 3) - _torquesBias[0];
+    _tmax.at<double>(0, 1) = _tmp.at<double>(2, 4) - _torquesBias[1];
+    _tmax.at<double>(0, 2) = _tmp.at<double>(2, 5) - _torquesBias[2];
 
-    _tmax.at<double>(1, 0) = _collectedData.at<double>(4, 3) - _torquesBias[0];
-    _tmax.at<double>(1, 1) = _collectedData.at<double>(4, 4) - _torquesBias[1];
-    _tmax.at<double>(1, 2) = _collectedData.at<double>(4, 5) - _torquesBias[2];
+    _tmax.at<double>(1, 0) = _tmp.at<double>(4, 3) - _torquesBias[0];
+    _tmax.at<double>(1, 1) = _tmp.at<double>(4, 4) - _torquesBias[1];
+    _tmax.at<double>(1, 2) = _tmp.at<double>(4, 5) - _torquesBias[2];
 
-    _tmax.at<double>(2, 0) = _collectedData.at<double>(0, 3) - _torquesBias[0];
-    _tmax.at<double>(2, 1) = _collectedData.at<double>(0, 4) - _torquesBias[1];
-    _tmax.at<double>(2, 2) = _collectedData.at<double>(0, 5) - _torquesBias[2];
+    _tmax.at<double>(2, 0) = _tmp.at<double>(0, 3) - _torquesBias[0];
+    _tmax.at<double>(2, 1) = _tmp.at<double>(0, 4) - _torquesBias[1];
+    _tmax.at<double>(2, 2) = _tmp.at<double>(0, 5) - _torquesBias[2];
 
-    _fgmaxNeg.at<double>(0, 0) = _collectedData.at<double>(1, 0) - _forcesBias[0];
-    _fgmaxNeg.at<double>(0, 1) = _collectedData.at<double>(1, 1) - _forcesBias[1];
-    _fgmaxNeg.at<double>(0, 2) = _collectedData.at<double>(1, 2) - _forcesBias[2];
+    _fgmaxNeg.at<double>(0, 0) = _tmp.at<double>(1, 0) - _forcesBias[0];
+    _fgmaxNeg.at<double>(0, 1) = _tmp.at<double>(1, 1) - _forcesBias[1];
+    _fgmaxNeg.at<double>(0, 2) = _tmp.at<double>(1, 2) - _forcesBias[2];
 
-    _fgmaxNeg.at<double>(1, 0) = _collectedData.at<double>(5, 0) - _forcesBias[0];
-    _fgmaxNeg.at<double>(1, 1) = _collectedData.at<double>(5, 1) - _forcesBias[1];
-    _fgmaxNeg.at<double>(1, 2) = _collectedData.at<double>(5, 2) - _forcesBias[2];
+    _fgmaxNeg.at<double>(1, 0) = _tmp.at<double>(5, 0) - _forcesBias[0];
+    _fgmaxNeg.at<double>(1, 1) = _tmp.at<double>(5, 1) - _forcesBias[1];
+    _fgmaxNeg.at<double>(1, 2) = _tmp.at<double>(5, 2) - _forcesBias[2];
 
-    _fgmaxNeg.at<double>(2, 0) = _collectedData.at<double>(3, 0) - _forcesBias[0];
-    _fgmaxNeg.at<double>(2, 1) = _collectedData.at<double>(3, 1) - _forcesBias[1];
-    _fgmaxNeg.at<double>(2, 2) = _collectedData.at<double>(3, 2) - _forcesBias[2];
+    _fgmaxNeg.at<double>(2, 0) = _tmp.at<double>(3, 0) - _forcesBias[0];
+    _fgmaxNeg.at<double>(2, 1) = _tmp.at<double>(3, 1) - _forcesBias[1];
+    _fgmaxNeg.at<double>(2, 2) = _tmp.at<double>(3, 2) - _forcesBias[2];
 
-    _tmaxNeg.at<double>(0, 0) = _collectedData.at<double>(1, 3) - _torquesBias[0];
-    _tmaxNeg.at<double>(0, 1) = _collectedData.at<double>(1, 4) - _torquesBias[1];
-    _tmaxNeg.at<double>(0, 2) = _collectedData.at<double>(1, 5) - _torquesBias[2];
+    _tmaxNeg.at<double>(0, 0) = _tmp.at<double>(1, 3) - _torquesBias[0];
+    _tmaxNeg.at<double>(0, 1) = _tmp.at<double>(1, 4) - _torquesBias[1];
+    _tmaxNeg.at<double>(0, 2) = _tmp.at<double>(1, 5) - _torquesBias[2];
 
-    _tmaxNeg.at<double>(1, 0) = _collectedData.at<double>(5, 3) - _torquesBias[0];
-    _tmaxNeg.at<double>(1, 1) = _collectedData.at<double>(5, 4) - _torquesBias[1];
-    _tmaxNeg.at<double>(1, 2) = _collectedData.at<double>(5, 5) - _torquesBias[2];
+    _tmaxNeg.at<double>(1, 0) = _tmp.at<double>(5, 3) - _torquesBias[0];
+    _tmaxNeg.at<double>(1, 1) = _tmp.at<double>(5, 4) - _torquesBias[1];
+    _tmaxNeg.at<double>(1, 2) = _tmp.at<double>(5, 5) - _torquesBias[2];
 
-    _tmaxNeg.at<double>(2, 0) = _collectedData.at<double>(3, 3) - _torquesBias[0];
-    _tmaxNeg.at<double>(2, 1) = _collectedData.at<double>(3, 4) - _torquesBias[1];
-    _tmaxNeg.at<double>(2, 2) = _collectedData.at<double>(3, 5) - _torquesBias[2];
+    _tmaxNeg.at<double>(2, 0) = _tmp.at<double>(3, 3) - _torquesBias[0];
+    _tmaxNeg.at<double>(2, 1) = _tmp.at<double>(3, 4) - _torquesBias[1];
+    _tmaxNeg.at<double>(2, 2) = _tmp.at<double>(3, 5) - _torquesBias[2];
 
     std::ofstream out("calibData.txt");
 
@@ -273,269 +311,358 @@ void TenzoMath::loadCalibData()
     input.close();
 }
 
-cv::Mat TenzoMath::rotMatrix(const double& w, const double& p, const double& r) const
-{
-    cv::Mat mx(3, 3, CV_64F), my(3, 3, CV_64F), mz(3, 3, CV_64F);
-    mx.at<double>(0, 0) = 1;
-    mx.at<double>(0, 1) = mx.at<double>(0, 2) = mx.at<double>(1, 0) = mx.at<double>(2, 0) = 0;
-    mx.at<double>(1, 1) = mx.at<double>(2, 2) = cos(w);
-    mx.at<double>(1, 2) = -sin(w);
-    mx.at<double>(2, 1) = sin(w);
 
-    my.at<double>(1, 1) = 1;
-    my.at<double>(0, 1) = my.at<double>(1, 2) = my.at<double>(1, 0) = my.at<double>(2, 1) = 0;
-    my.at<double>(0, 0) = my.at<double>(2, 2) = cos(p);
-    my.at<double>(0, 2) = sin(p);
-    my.at<double>(2, 0) = -sin(p);
+//void TenzoMath::ftControlCartesianCoord()
+//{
+//    std::array<double, 6> worldPos = {
+//        985.0, 0.0, 940.0, -180.0, 0.0, 0.0
+//    };
+//    std::array<double, 6> jointPos = {
+//        0.0, 0.0, 0.0, 0.0, -90.0, 0.0
+//    };
+//    cv::Mat curPos = _model.fanucForwardTask(jointPos);
+//    std::cout << "start:\n" << curPos << '\n';
+//    worldPos = FanucModel::getCoordsFromMat(curPos);
+//    worldPos[3] *= (180.0 / PI);
+//    worldPos[4] *= (180.0 / PI);
+//    worldPos[5] *= (180.0 / PI);
+//    for (int i = 0; i < 6; ++i)
+//    {
+//        std::cout << worldPos[i] << '\t';
+//    }
+//    std::cout << "\n\n";
+//    std::cin.get();
+//    //Tenzo tenzoData(_T("COM6"));
+//    cv::Mat forces(1, 3, cv::DataType<double>::type);
+//    cv::Mat torques(1, 3, cv::DataType<double>::type);
+//    cv::Mat currRot(3, 3, cv::DataType<double>::type);
+//    constexpr double coefForces = 0.0025;
+//    constexpr double coefTorques = 0.0005;
+//    constexpr double threshold = 150;
+//    forces.at<double>(0, 0) = forces.at<double>(0, 1) = forces.at<double>(0, 2) = 5;
+//    torques.at<double>(0, 0) = torques.at<double>(0, 1) = torques.at<double>(0, 2) = 1;
+//   // _fanuc.startWorking();
+//   // _fanuc.setWorldFrame();
+//    // std::ofstream delta("delta.txt");
+//    // std::ofstream readings("delta3.txt");
+//    // std::ofstream out("readingsOut1.txt");
+//    // std::chrono::time_point<std::chrono::system_clock> start, end;
+//    // start = std::chrono::system_clock::now();
+//    // int deltaTime = 0;
+//    /*cv::Mat f = cv::Mat::zeros(1, 3, cv::DataType<double>::type);
+//    cv::Mat t = cv::Mat::zeros(1, 3, cv::DataType<double>::type);
+//    double Rtmp[9] = { 0, -1, 0, 1, 0, 0, 0, 0, -1 };
+//    cv::Mat R(3, 3, cv::DataType<double>::type, Rtmp);
+//    std::cout << R << '\n';*/
+//    while (true)
+//    {
+//       //std::array<double, 6> tmp = swapData(tenzoData.readData());
+//
+//        currRot = _model.rotMatrix(worldPos[3] / 180.0 * PI, worldPos[4] / 180.0 * PI,
+//            worldPos[5] / 180.0 * PI);
+//        std::array<double, 6> newData = gravCompensation(currRot, tmp);
+//
+//        forces.at<double>(0, 0) = (abs(newData[0]) < threshold ? 0 : newData[0] * coefForces);
+//        forces.at<double>(0, 1) = (abs(newData[1]) < threshold ? 0 : newData[1] * coefForces);
+//        forces.at<double>(0, 2) = (abs(newData[2]) < threshold ? 0 : newData[2] * coefForces);
+//        torques.at<double>(0, 0) = (abs(newData[3]) < threshold ? 0 : newData[3] * coefTorques);
+//        torques.at<double>(0, 1) = (abs(newData[4]) < threshold ? 0 : newData[4] * coefTorques);
+//        torques.at<double>(0, 2) = (abs(newData[5]) < threshold ? 0 : newData[5] * coefTorques * 2.5);
+//        */
+//        //forces *= currRot.t();
+//        //torques *= currRot.t();
+//
+//        double deltaLength = sqrt(forces.at<double>(0, 0) * forces.at<double>(0, 0) + forces.at<double>(0, 1) * forces.at<double>(0, 1)
+//            + forces.at<double>(0, 2) * forces.at<double>(0, 2));
+//        // std::cout << deltaLength << '\n';
+//        if (deltaLength > 20.0)
+//        {
+//            forces.at<double>(0, 0) = forces.at<double>(0, 0) / deltaLength * 20.0;
+//            forces.at<double>(0, 1) = forces.at<double>(0, 0) / deltaLength * 20.0;
+//            forces.at<double>(0, 2) = forces.at<double>(0, 0) / deltaLength * 20.0;
+//        }
+//        cv::Mat deltaPos = FanucModel::transMatrix(forces.at<double>(0, 0), forces.at<double>(0, 1), forces.at<double>(0, 2),
+//            torques.at<double>(0, 0), torques.at<double>(0, 1), torques.at<double>(0, 2));
+//        auto deltaCoord = FanucModel::getCoordsFromMat(deltaPos);
+//        deltaCoord[3] *= (180.0 / PI);
+//        deltaCoord[4] *= (180.0 / PI);
+//        deltaCoord[5] *= (180.0 / PI);
+//        for (int i = 0; i < 6; ++i)
+//        {
+//            std::cout << deltaCoord[i] << '\t';
+//        }
+//        std::cout << std::endl;
+//        curPos =  curPos * deltaPos;
+//        std::cout << deltaPos << '\n' << curPos << '\n';
+//        worldPos = FanucModel::getCoordsFromMat(curPos);
+//        worldPos[3] *= (180.0 / PI);
+//        worldPos[4] *= (180.0 / PI);
+//        worldPos[5] *= (180.0 / PI);
+//        /* worldPos[0] += forces.at<double>(0, 0);
+//        worldPos[1] += forces.at<double>(0, 1);
+//        worldPos[2] += forces.at<double>(0, 2);
+//        worldPos[3] += torques.at<double>(0, 0);
+//        worldPos[4] += torques.at<double>(0, 1);
+//        worldPos[5] += torques.at<double>(0, 2);*/
+//
+//
+//        //std::cout << deltaLength << '\n';
+//        /*for (int i = 3; i < 6; ++i)
+//        {
+//        if (worldPos[i] > 180.0f)
+//        worldPos[i] -= 360.0f;
+//        if (worldPos[i] < -180.0f)
+//        worldPos[i] += 360.0f;
+//        }*/
+//        for (int i = 0; i < 6; ++i)
+//        {
+//            std::cout << worldPos[i] << '\t';
+//        }
+//        std::cout << std::endl;
+//        std::cin.get();
+//        // end = std::chrono::system_clock::now();
+//
+//        // unsigned long elapsed_seconds1 = std::chrono::duration_cast<std::chrono::microseconds>
+//        //     (end - start1).count();
+//
+//        // double velocity = deltaLength / elapsed_seconds1;
+//        //// std::cout << deltaLength << ' ' << velocity << '\n';
+//        // unsigned long elapsed_seconds = std::chrono::duration_cast<std::chrono::milliseconds>
+//        //     (end - start).count();
+//
+//
+//        //  std::cout << elapsed_seconds << ' ' << forces.at<double>(0, 0) << ' ' << forces.at<double>(0, 1) << ' ' << forces.at<double>(0, 2) << ' ' <<
+//        //     torques.at<double>(0, 0) << ' ' << torques.at<double>(0, 1) << ' ' << torques.at<double>(0, 2) << '\n';
+//        // out << elapsed_seconds << ' ' << forces.at<double>(0, 0) << ' ' << forces.at<double>(0, 1) << ' ' << forces.at<double>(0, 2) << ' ' <<
+//        //      torques.at<double>(0, 0) << ' ' << torques.at<double>(0, 1) << ' ' << torques.at<double>(0, 2) << '\n';
+//        // std::time_t end_time = std::chrono::system_clock::to_time_t(end);
+//        /* std::cout << elapsed_seconds << ' ' << velocity << '\n';
+//        out << elapsed_seconds << ' ' << velocity << '\n';*/
+//
+//       // _fanuc.goToCoordinates(worldPos[0], worldPos[1], worldPos[2], worldPos[3], worldPos[4],
+//       //     worldPos[5]);
+//
+//       // _fanuc.getJointAngles();
+//    }
+//}
 
-    mz.at<double>(2, 2) = 1;
-    mz.at<double>(0, 2) = mz.at<double>(1, 2) = mz.at<double>(2, 0) = mz.at<double>(2, 1) = 0;
-    mz.at<double>(1, 1) = mz.at<double>(0, 0) = cos(r);
-    mz.at<double>(0, 1) = -sin(r);
-    mz.at<double>(1, 0) = sin(r);
-
-    cv::Mat ans = mz * my * mx;
-    return ans;
-}
 
 void TenzoMath::ftControlCartesianCoord()
 {
     std::array<double, 6> worldPos = {
         985.0, 0.0, 940.0, -180.0, 0.0, 0.0
     };
-    Tenzo tenzoData(L"COM6");
-    std::array<double, 6> collectedData;
+    std::array<double, 6> jointPos = {
+        0.0, 0.0, 0.0, 0.0, -90.0, 0.0
+    };
+    cv::Mat curPos = _model.fanucForwardTask(jointPos);
+   
+    worldPos = FanucModel::getCoordsFromMat(curPos);
+    worldPos[3] *= (180.0 / PI);
+    worldPos[4] *= (180.0 / PI);
+    worldPos[5] *= (180.0 / PI);
+
+    Tenzo tenzoData(_T("COM6"));
+    cv::Mat forces(1, 3, cv::DataType<double>::type);
+    cv::Mat torques(1, 3, cv::DataType<double>::type);
+    cv::Mat currRot(3, 3, cv::DataType<double>::type);
+    constexpr double coefForces = 0.0025;
+    constexpr double coefTorques = 0.0005;
+    constexpr double threshold = 250;
+
+    //double cos;
+    //double coef;
+
+    cv::Mat prevF = cv::Mat::zeros(1, 3, cv::DataType<double>::type);
+
+    _fanuc.startWorking();
+    _fanuc.setWorldFrame();
+   
+    std::deque<double> coefsF = {0.1, 0.1, 0.1};
+    std::array<double, 4> weightsF = { 1.0, 1.0, 1.0, 1.0};
+    while (true)
+    {
+        std::array<double, 6> tmp = swapData(tenzoData.readData());
+       
+        currRot = _model.rotMatrix(worldPos[3] / 180.0 * PI, worldPos[4] / 180.0 * PI,
+            worldPos[5] / 180.0 * PI);
+
+        std::array<double, 6> newData = gravCompensation(currRot, tmp);
+       
+        forces.at<double>(0, 0) = (abs(newData[0]) < threshold ? 0 : newData[0] * coefForces);
+        forces.at<double>(0, 1) = (abs(newData[1]) < threshold ? 0 : newData[1] * coefForces);
+        forces.at<double>(0, 2) = (abs(newData[2]) < threshold ? 0 : newData[2] * coefForces);
+        torques.at<double>(0, 0) = (abs(newData[3]) < threshold ? 0 : newData[3] * coefTorques);
+        torques.at<double>(0, 1) = (abs(newData[4]) < threshold ? 0 : newData[4] * coefTorques);
+        torques.at<double>(0, 2) = (abs(newData[5]) < threshold ? 0 : newData[5] * coefTorques * 2.5);
+
+        //if (cv::countNonZero(forces) == 0)
+        //{         
+        //    coefsF.pop_front();
+        //    coefsF.push_back(0.1);         
+        //}
+        //else if(cv::countNonZero(prevF) == 0)
+        //{ 
+        //    coefsF.pop_front();
+        //    coefsF.push_back(0.1);          
+        //} 
+        //else
+        //{
+        //    cv::Mat forcesTmp = forces * currRot.t();
+        //    cv::Mat prevFTmp = prevF * currRot.t();
+        //    //std::cout << "cur :\n" << forcesTmp << "\nprev:\n" << prevTmp << "\n";
+        //    
+        //    double cos = prevFTmp.dot(forcesTmp) / (cv::norm(prevFTmp) * cv::norm(forcesTmp));
+        //    double cosa2 = sqrt(0.5 + 0.5 * cos) + 1e-6;
+
+        //    if (cosa2 < 0.2)
+        //    {
+        //        std::cout << "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n";
+        //        for (auto it = coefsF.begin(); it != coefsF.end(); ++it)
+        //        {
+        //            std::cout << *it << ' ';                  
+        //        }
+        //        std::cout << '\n';
+        //        coefsF = { 0.1, 0.1, 0.1 };
+        //        for (auto it = coefsF.begin(); it != coefsF.end(); ++it)
+        //        {
+        //            std::cout << *it << ' ';
+        //        }
+        //        std::cout << '\n';
+        //    }
+        //    
+        //    double znamen = 0;
+        //    std::cout << "n: " << coefsF.size() << '\n';
+        //    int i = 0;
+        //    for (auto it = coefsF.begin(); it != coefsF.end(); ++it, ++i)
+        //    {
+        //        std::cout << *it << ' ';
+        //        znamen += weightsF[i] / *it;    
+        //    }
+        //    std::cout << '\n';
+        //    znamen += weightsF[3] / cosa2;
+
+        //    coefsF.pop_front();
+        //    coefsF.push_back(4.0 / znamen);
+        //    
+        //    if (isnan(coefsF.back()))
+        //    {
+        //        std::cout << "broken\n\a" << cv::norm(prevFTmp) << ' ' << cv::norm(forcesTmp) << '\n'
+        //             << '\n' << cosa2 << '\n' << znamen << '\n';
+        //        assert(true);
+        //        std::cin.get();
+        //    }
+        //}
+
+        cv::Mat forcesTmp = forces * currRot.t();
+        cv::Mat prevFTmp = prevF * currRot.t();
+        double cos = prevFTmp.dot(forcesTmp) / (cv::norm(prevFTmp) * cv::norm(forcesTmp));
+
+        std::cout << "cos = " << cos << '\n' << forcesTmp << '\n';
+       // std::cout << coefsF.back() << "\n";
+
+        forces *= coefsF.back();
+        torques *= coefsF.back();
+
+        prevF = forces.clone();
+
+        cv::Mat deltaPos = FanucModel::transMatrix(forces.at<double>(0, 0), forces.at<double>(0, 1), forces.at<double>(0, 2),
+            torques.at<double>(0, 0), torques.at<double>(0, 1), torques.at<double>(0, 2));
+
+        curPos = curPos * deltaPos;
+        worldPos = FanucModel::getCoordsFromMat(curPos);
+        worldPos[3] *= (180.0 / PI);
+        worldPos[4] *= (180.0 / PI);
+        worldPos[5] *= (180.0 / PI);
+
+        _fanuc.goToCoordinates(worldPos[0], worldPos[1], worldPos[2], worldPos[3], worldPos[4], worldPos[5]);
+        
+       _fanuc.getJointAngles();
+    }
+}
+
+void TenzoMath::newJointsControl()
+{
+    std::array<double, 6> worldPos = { 985.0, 0.0, 1040.0, -180.0, 0.0, 0.0 };
+    std::array<double, 6> jointPos = { 0.0, 0.0, 0.0, 0.0, -90.0, 0.0 };
+    Tenzo tenzoData(_T("COM6"));
     cv::Mat forces(1, 3, cv::DataType<double>::type);
     cv::Mat torques(1, 3, cv::DataType<double>::type);
     cv::Mat currRot(3, 3, cv::DataType<double>::type);
     constexpr double coefForces = 0.005;
     constexpr double coefTorques = 0.001;
     constexpr double threshold = 150;
-    //FanucM20iA fanuc;
+    cv::Mat p6 = _model.fanucForwardTask(jointPos);
     _fanuc.startWorking();
-    _fanuc.setWorldFrame();
+    _fanuc.setJointFrame();
     while (true)
-    {
-        currRot = rotMatrix(worldPos[3] / 180.0 * PI, worldPos[4] / 180.0 * PI,
-                            worldPos[5] / 180.0 * PI);
-        std::array<double, 6> tmp = tenzoData.readData();
-        collectedData[0] = tmp[1];
-        collectedData[1] = -tmp[0];
-        collectedData[2] = -tmp[2];
-        collectedData[3] = -tmp[4];
-        collectedData[4] = tmp[3];
-        collectedData[5] = tmp[5];
-        std::array<double, 6> newData = gravCompensation(currRot, collectedData);
+    {   
+        std::array<double, 6> tmp = swapData(tenzoData.readData());
+        
+        std::array<double, 6> newData = gravCompensation(p6, tmp);
         forces.at<double>(0, 0) = (abs(newData[0]) < threshold ? 0 : newData[0] * coefForces);
         forces.at<double>(0, 1) = (abs(newData[1]) < threshold ? 0 : newData[1] * coefForces);
         forces.at<double>(0, 2) = (abs(newData[2]) < threshold ? 0 : newData[2] * coefForces);
         torques.at<double>(0, 0) = (abs(newData[3]) < threshold ? 0 : newData[3] * coefTorques);
         torques.at<double>(0, 1) = (abs(newData[4]) < threshold ? 0 : newData[4] * coefTorques);
         torques.at<double>(0, 2) = (abs(newData[5]) < threshold ? 0 : newData[5] * coefTorques * 5);
+       // std::cout << "Data: " << forces.at<double>(0, 0) << '\t' << forces.at<double>(0, 1) << '\t' << forces.at<double>(0, 2) << '\t' <<
+        //    torques.at<double>(0, 0) << '\t' << torques.at<double>(0, 1) << '\t' << torques.at<double>(0, 2) << '\n';
 
-        forces *= currRot.t();
-        torques *= currRot.t();
-
-        //std::cout << forces.at<double>(0, 0) << '\t' << forces.at<double>(0, 1) << '\t' << forces.at<double>(0, 2) << '\t'
-        //		<< torques.at<double>(0, 0) << '\t' << torques.at<double>(0, 1) << '\t' << torques.at<double>(0, 2) << std::endl;
-
-        worldPos[0] += forces.at<double>(0, 0);
-        worldPos[1] += forces.at<double>(0, 1);
-        worldPos[2] += forces.at<double>(0, 2);
-        worldPos[3] += torques.at<double>(0, 0);
-        worldPos[4] -= torques.at<double>(0, 1);
-        worldPos[5] -= torques.at<double>(0, 2);
-
-        for (int i = 3; i < 6; ++i)
+        /*if (abs(forces.at<double>(0, 0)) > 0.0 || abs(forces.at<double>(0, 1)) > 0.0 || abs(forces.at<double>(0, 2)) > 0.0 ||
+            abs(torques.at<double>(0, 0)) > 0.0 || abs(torques.at<double>(0, 1)) > 0.0 || abs(torques.at<double>(0, 2)) > 0.0)*/ // != 0
+        if (forces.at<double>(0, 0) != 0.0 || forces.at<double>(0, 1) != 0.0 || forces.at<double>(0, 2) != 0.0 ||
+            torques.at<double>(0, 0) != 0.0 || torques.at<double>(0, 1) != 0.0 || torques.at<double>(0, 2) != 0.0) 
         {
-            if (worldPos[i] > 180.0f)
-                worldPos[i] -= 360.0f;
-            if (worldPos[i] < -180.0f)
-                worldPos[i] += 360.0f;
+            //double t0 = torques.at<double>(0, 0);
+            //double t1 = torques.at<double>(0, 1);
+            //torques.at<double>(0, 0) = t0 * cos(worldPos[5] / 180. * PI) - t1 * sin(worldPos[5] / 180. * PI);
+            //torques.at<double>(0, 1) = -t0 * sin(worldPos[5] / 180. * PI) + t1 * cos(worldPos[5] / 180. * PI);
+            //torques.at<double>(0, 2) = (sin(worldPos[5] / 180. * PI) > 0 ? torques.at<double>(0, 2) : -torques.at<double>(0, 2));
+
+            p6(cv::Rect(0, 0, 3, 3)).copyTo(currRot);
+            forces *= currRot.t();
+            torques *= currRot.t(); 
+
+            worldPos[0] += forces.at<double>(0, 0);
+            worldPos[1] += forces.at<double>(0, 1);
+            worldPos[2] += forces.at<double>(0, 2);
+            worldPos[3] += torques.at<double>(0, 0);
+            worldPos[4] -= torques.at<double>(0, 1);
+            worldPos[5] -= torques.at<double>(0, 2);
+
+            for (int i = 3; i < 6; ++i)
+            {
+                if (worldPos[i] > 180.0)
+                    worldPos[i] -= 360.0;
+                if (worldPos[i] < -180.0)
+                    worldPos[i] += 360.0;
+            }
+
+            for (int i = 0; i < 6; ++i)
+            {
+                std::cout << worldPos[i] << '\t';
+            }
+            std::cout << std::endl;
+
+            std::cout << _model.fanucInverseTask(worldPos) << std::endl;
+
+            jointPos = chooseNearestPose(_model.fanucInverseTask(worldPos), jointPos);
+            p6 = _model.fanucForwardTask(jointPos);
+           /* for (int i = 0; i < 6; ++i)
+            {
+                std::cout << jointPos[i] << '\t';
+            }
+            std::cout << std::endl;*/
+
+            _fanuc.goToCoordinates(jointPos[0], jointPos[1], jointPos[2], jointPos[3], jointPos[4], jointPos[5]);
+            _fanuc.getJointAngles(); //????падает
         }
-        for (int i = 0; i < 6; ++i)
-        {
-            std::cout << worldPos[i] << '\t';
-        }
-        std::cout << std::endl;
-        _fanuc.goToCoordinates(worldPos[0], worldPos[1], worldPos[2], worldPos[3], worldPos[4],
-                               worldPos[5]);
-        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+       // std::this_thread::sleep_for(std::chrono::milliseconds(100));
     }
 }
 
-//spherical wrist coordinates: homepos 985, 0, 1040; 
-cv::Mat TenzoMath::inverseTask(const std::array<double, 6> coord) const
-{
-    std::vector<RoboModel::DhParameters> param = _model.getDhParameters();
-
-    const double a = 2 * param[0]._aParam * coord[0];
-    const double b = 2 * param[0]._aParam * coord[1];
-    const double c = 2 * param[1]._aParam * param[2]._aParam - 2 * param[1]._dParam * param[3]._dParam  * 
-                     sin(param[1]._alphaParam) * sin(param[2]._alphaParam);
-    const double d = 2 * param[2]._aParam * param[1]._dParam * sin(param[1]._alphaParam) + 2 * param[1]._aParam * param[3]._dParam
-                     * sin(param[2]._alphaParam);
-    const double e = param[1]._aParam * param[1]._aParam + param[2]._aParam * param[2]._aParam + param[1]._dParam *
-                     param[1]._dParam + param[2]._dParam * param[2]._dParam + param[3]._dParam * param[3]._dParam -
-                     param[0]._aParam * param[0]._aParam - coord[0] * coord[0] - coord[1] * coord[1] - (coord[2] - param[0]._dParam) * (coord[2] - param[0]._dParam) + 2 *
-                     param[1]._dParam * param[2]._dParam * cos(param[1]._alphaParam) + 2 * param[1]._dParam * param[3]._dParam *
-                     cos(param[1]._alphaParam) * cos(param[2]._alphaParam) + 2 * param[2]._dParam * param[3]._dParam * cos(param[2]._alphaParam);
-    const double f = coord[1] * sin(param[0]._alphaParam);
-    const double g = -coord[0] * sin(param[0]._alphaParam);
-    const double h = -param[3]._dParam * sin(param[1]._alphaParam) * sin(param[2]._alphaParam);
-    const double i = param[2]._aParam * sin(param[1]._alphaParam);
-    const double j = param[1]._dParam + param[2]._dParam * cos(param[1]._alphaParam) + param[3]._dParam *
-                     cos(param[1]._alphaParam) * cos(param[2]._alphaParam) - (coord[2] - param[0]._dParam) * cos(param[0]._alphaParam);
-    const double r = 4. * param[0]._aParam * param[0]._aParam * (j - h) * (j - h) + sin(param[0]._alphaParam) * sin(param[0]._alphaParam) * (e - c) * (e - c) 
-                   - 4. * param[0]._aParam * param[0]._aParam * sin(param[0]._alphaParam) * sin(param[0]._alphaParam) * (coord[0] * coord[0] + coord[1] * coord[1]);
-    const double s = 4. * (4. * param[0]._aParam * param[0]._aParam * i * (j - h) + sin(param[0]._alphaParam) * sin(param[0]._alphaParam) * d * 
-                     (e - c));
-    const double t = 2. * (4. * param[0]._aParam * param[0]._aParam * (j * j - h * h + 2 * i * i) + sin(param[0]._alphaParam) * sin(param[0]._alphaParam)
-                     * (e * e - c * c + 2 * d * d) - 4. * param[0]._aParam * param[0]._aParam * sin(param[0]._alphaParam) * sin(param[0]._alphaParam) *
-                     (coord[0] * coord[0] + coord[1] * coord[1]) );
-    const double u = 4. * (4. * param[0]._aParam * param[0]._aParam * i * (j + h) +
-                     sin(param[0]._alphaParam) * sin(param[0]._alphaParam) * d * (e + c));
-    const double v = 4. * param[0]._aParam * param[0]._aParam * (h + j) * (h + j) + sin(param[0]._alphaParam) * sin(param[0]._alphaParam) * 
-                     (e + c) * (e + c) - 4. * param[0]._aParam * param[0]._aParam * sin(param[0]._alphaParam) * sin(param[0]._alphaParam) * 
-                     (coord[0] * coord[0] + coord[1] * coord[1]);
-
-    double x[4];
-    const int numberOfRoots = SolveP4(x, s / r, t / r, u / r, v / r);
-
-    if (numberOfRoots != 2 && numberOfRoots != 4)
-        std::cout << "something is wrong with roots of equatation";
-
-    cv::Mat theta(numberOfRoots, 3, cv::DataType<double>::type);
-
-    for (int it = 0; it < numberOfRoots; ++it)
-    {
-        theta.at<double>(it, 2) = 2. * atan(x[it]);
-    }
-   
-    double costheta, sintheta;
-    for (int it = 0; it < numberOfRoots; ++it)
-    {
-        costheta = (-g * (c * cos(theta.at<double>(it, 2)) + d * sin(theta.at<double>(it, 2)) + e) +
-                    b * (h * cos(theta.at<double>(it, 2)) + i * sin(theta.at<double>(it, 2) + j))) / (a * g - f * b);
-        sintheta = (f * (c * cos(theta.at<double>(it, 2)) + d * sin(theta.at<double>(it, 2)) + e) -
-                    a * (h * cos(theta.at<double>(it, 2)) + i * sin(theta.at<double>(it, 2) + j))) / (a * g - f * b);
-        if (sintheta >= 0)
-            theta.at<double>(it, 0) = acos(costheta);
-        else
-            theta.at<double>(it, 0) = -acos(costheta);
-    }
-
-    for (int it = 0; it < numberOfRoots; ++it)
-    {
-        const double a11 = param[1]._aParam + param[2]._aParam * cos(theta.at<double>(it, 2)) +
-                           param[3]._dParam * sin(param[2]._alphaParam) * sin(theta.at<double>(it, 2));
-        const double a12 = -param[2]._aParam * cos(param[1]._alphaParam) *
-                           sin(theta.at<double>(it, 2)) + param[2]._dParam * sin(param[1]._alphaParam) + param[3]._dParam *
-                           sin(param[2]._alphaParam) * cos(param[1]._alphaParam) * cos(theta.at<double>(it, 2)) + 
-                           param[3]._dParam * sin(param[1]._alphaParam) * cos(param[2]._alphaParam);
-        costheta = (a11 * (coord[0] * cos(theta.at<double>(it, 0)) + coord[1] * sin(theta.at<double>(it, 0)) - param[0]._aParam)
-                   - a12 * (-coord[0] * cos(param[0]._alphaParam) * sin(theta.at<double>(it, 0)) + coord[1] * cos(param[0]._alphaParam) *
-                           cos(theta.at<double>(it, 0)) + (coord[2] - param[0]._dParam) * sin(param[0]._alphaParam))) / (a11 * a11 + a12 * a12);
-        sintheta = (a12 * (coord[0] * cos(theta.at<double>(it, 0)) + coord[1] * sin(theta.at<double>(it, 0)) - param[0]._aParam) + a11 * 
-                   (-coord[0] * cos(param[0]._alphaParam) * sin(theta.at<double>(it, 0)) + coord[1] * cos(param[0]._alphaParam) *
-                           cos(theta.at<double>(it, 0)) + (coord[2] - param[0]._dParam) * sin(param[0]._alphaParam))) / (a11 * a11 + a12 * a12);
-        if (sintheta >= 0)
-            theta.at<double>(it, 1) = acos(costheta);
-        else
-            theta.at<double>(it, 1) = -acos(costheta);
-    }
-    for (int it = 0; it < numberOfRoots; ++it)
-    {
-        theta.at<double>(it, 1) = -theta.at<double>(it, 1) + PI / 2;
-        theta.at<double>(it, 2) -= theta.at<double>(it, 1);
-    }
-
-    std::vector<int> ind;
-
-    for (int it = 0; it < numberOfRoots; ++it)
-    {
-        bool isOk = true;
-
-        if (abs(theta.at<double>(it, 0)) > 170. / 180. * PI)
-            isOk = false;
-        if (theta.at<double>(it, 1) > 90. / 180. * PI || theta.at<double>(it, 1) < -70 / 180. * PI)
-            isOk = false;
-        if (theta.at<double>(it, 2) > 200. / 180. * PI || theta.at<double>(it, 2) < -70 / 180. * PI)
-            isOk = false;
-        
-        if (!std::isnan(theta.at<double>(it, 1)) && isOk)
-            ind.emplace_back(it);   
-    }
-    cv::Mat thetaRes(ind.size(), 6, cv::DataType<double>::type);
-    for (int it = 0; it < ind.size(); ++it)
-    {
-        thetaRes.at<double>(it, 0) = theta.at<double>(ind[it], 0);
-        thetaRes.at<double>(it, 1) = theta.at<double>(ind[it], 1);
-        thetaRes.at<double>(it, 2) = theta.at<double>(ind[it], 2);
-        thetaRes.at<double>(it, 3) = 0;
-        thetaRes.at<double>(it, 4) = 0;
-        thetaRes.at<double>(it, 5) = 0;
-    }
-  
-    cv::Mat thetaPrefinal(thetaRes.rows * 2, 6, cv::DataType<double>::type);
-    for (int it = 0; it < thetaRes.rows; ++it)
-    {
-        cv::Mat r36(3, 3, cv::DataType<double>::type), r03(3, 3, cv::DataType<double>::type);
-        std::array<double, 6> q;
-        q[0] = thetaRes.at<double>(it, 0);
-        q[1] = -thetaRes.at<double>(it, 1) + PI / 2;
-        q[2] = thetaRes.at<double>(it, 2) + thetaRes.at<double>(it, 1);
-
-        r03 = qi(param[0]._alphaParam, q[0]) * qi(param[1]._alphaParam, q[1]) * qi(param[2]._alphaParam, q[2]);
-        r36 = r03.inv() * rotMatrix(coord[3] / 180. * PI, coord[4] / 180. * PI, coord[5] / 180. * PI);
-
-        for (int zt = 0; zt < 2; ++zt)
-        {
-            thetaPrefinal.at<double>(it * 2 + zt, 0) = thetaRes.at<double>(it, 0);
-            thetaPrefinal.at<double>(it * 2 + zt, 1) = thetaRes.at<double>(it, 1);
-            thetaPrefinal.at<double>(it * 2 + zt, 2) = thetaRes.at<double>(it, 2);
-        }
-        
-        thetaPrefinal.at<double>(it * 2, 4) = acos(r36.at<double>(2, 2));
-        thetaPrefinal.at<double>(it * 2 + 1, 4) = -acos(r36.at<double>(2, 2));
-
-        thetaPrefinal.at<double>(it * 2, 3) = -(PI - asin(r36.at<double>(1, 2) / sin(thetaPrefinal.at<double>(it * 2, 4))));
-        thetaPrefinal.at<double>(it * 2 + 1, 3) = -asin(r36.at<double>(1, 2) / sin(thetaPrefinal.at<double>(it * 2 + 1, 4)));
-
-        thetaPrefinal.at<double>(it * 2, 5) = -(PI - asin(r36.at<double>(2, 1) / sin(thetaPrefinal.at<double>(it * 2, 4))));
-        thetaPrefinal.at<double>(it * 2 + 1, 5) = -asin(r36.at<double>(2, 1) / sin(thetaPrefinal.at<double>(it * 2 + 1, 4)));
-    }
-
-    std::vector<int> indFinal;
-    for (int it = 0; it < thetaPrefinal.rows; ++it)
-    {
-        bool isOk = true;
-        
-        if (abs(thetaPrefinal.at<double>(it, 3)) > 210. / 180. * PI) isOk = false;
-        if (abs(thetaPrefinal.at<double>(it, 4)) > 140. / 180. * PI) isOk = false;
-        if (abs(thetaPrefinal.at<double>(it, 5)) > 270. / 180. * PI) isOk = false;
-
-        if (isOk)
-        {
-            indFinal.emplace_back(it);
-        }
-    }
-
-    cv::Mat thetaFinal(indFinal.size(), 6, cv::DataType<double>::type);
-    for (int it = 0; it < indFinal.size(); ++it)
-    {
-        thetaFinal.at<double>(it, 0) = thetaPrefinal.at<double>(indFinal[it], 0);
-        thetaFinal.at<double>(it, 1) = thetaPrefinal.at<double>(indFinal[it], 1);
-        thetaFinal.at<double>(it, 2) = thetaPrefinal.at<double>(indFinal[it], 2);
-        thetaFinal.at<double>(it, 3) = thetaPrefinal.at<double>(indFinal[it], 3);
-        thetaFinal.at<double>(it, 4) = thetaPrefinal.at<double>(indFinal[it], 4);
-        thetaFinal.at<double>(it, 5) = thetaPrefinal.at<double>(indFinal[it], 5);
-    }
-
-    return thetaFinal * 180. / PI;
-}
-
-std::array<double, 6> TenzoMath::chooseNearestPose(cv::Mat res, std::array<double, 6> prevPos) const
+std::array<double, 6> TenzoMath::chooseNearestPose(cv::Mat res, std::array<double, 6> prevPos)
 {
     if (!res.empty())
     {
@@ -562,8 +689,9 @@ std::array<double, 6> TenzoMath::chooseNearestPose(cv::Mat res, std::array<doubl
                     num = j;
                 }
             }
-            if (min < 10.f)
+            if (abs(min) < 50.f) // обосновать или убрать
             {
+                std::cout << "\nchosen\n";
                 return std::array<double, 6>{res.at<double>(num, 0), res.at<double>(num, 1), res.at<double>(num, 2),  res.at<double>(num, 3), res.at<double>(num, 4), res.at<double>(num, 5) };
             }
         }
@@ -572,23 +700,6 @@ std::array<double, 6> TenzoMath::chooseNearestPose(cv::Mat res, std::array<doubl
     return prevPos;
 }
 
-cv::Mat TenzoMath::qi(const double& alpha, const  double& q) const
-{
-    cv::Mat tmp(3, 3, CV_64F);
-    tmp.at<double>(0, 0) = cos(q);
-    tmp.at<double>(0, 1) = -cos(alpha) * sin(q);
-    tmp.at<double>(0, 2) = sin(alpha) * sin(q);
-
-    tmp.at<double>(1, 0) = sin(q);
-    tmp.at<double>(1, 1) = cos(alpha) * cos(q);
-    tmp.at<double>(1, 2) = -sin(alpha) * cos(q);
-
-    tmp.at<double>(2, 0) = 0;
-    tmp.at<double>(2, 1) = sin(alpha);
-    tmp.at<double>(2, 2) = cos(alpha);
-
-    return tmp;
-}
 //
 //void TenzoMath::ftControlJoints()
 //{
@@ -598,7 +709,6 @@ cv::Mat TenzoMath::qi(const double& alpha, const  double& q) const
 //    std::string errorMessage;
 //
 //    Tenzo tenzoData(L"COM6");
-//    std::array<double, 6> collectedData;
 //    cv::Mat forces(1, 3, cv::DataType<double>::type);
 //    cv::Mat torques(1, 3, cv::DataType<double>::type);
 //    constexpr double coefForces = 0.005;
@@ -610,15 +720,9 @@ cv::Mat TenzoMath::qi(const double& alpha, const  double& q) const
 //    {
 //        cv::Mat p6 = _model.fanucForwardTask(jointPos);
 //
-//        std::array<double, 6> tmp = tenzoData.readData();
-//        collectedData[0] = tmp[1];
-//        collectedData[1] = -tmp[0];
-//        collectedData[2] = -tmp[2];
-//        collectedData[3] = -tmp[4];
-//        collectedData[4] = tmp[3];
-//        collectedData[5] = tmp[5];
-//
-//        std::array<double, 6> newData = gravCompensation(p6, collectedData);
+//        std::array<double, 6> tmp = swapData(tenzoData.readData());
+//  
+//        std::array<double, 6> newData = gravCompensation(p6, tmp);
 //        forces.at<double>(0, 0) = (abs(newData[0]) < threshold ? 0 : newData[0] * coefForces);
 //        forces.at<double>(0, 1) = (abs(newData[1]) < threshold ? 0 : newData[1] * coefForces);
 //        forces.at<double>(0, 2) = (abs(newData[2]) < threshold ? 0 : newData[2] * coefForces);
@@ -629,6 +733,7 @@ cv::Mat TenzoMath::qi(const double& alpha, const  double& q) const
 //        cv::Mat rot(3, 3, cv::DataType<double>::type);
 //        p6(cv::Rect(0, 0, 3, 3)).copyTo(rot);
 //        forces *= rot.t();
+//        torques *= rot.t();
 //
 //        if (posCartesian[0] + forces.at<double>(0, 0) > _xMax) errorMessage = "Exceeding the maximum limits  X axis";
 //        if (posCartesian[0] + forces.at<double>(0, 0) < _xMin) errorMessage = "Exceeding the minimum limits  X axis";
@@ -752,7 +857,7 @@ cv::Mat TenzoMath::qi(const double& alpha, const  double& q) const
 //        }
 //    };
 //
-//    cv::Mat collectedData(8, 6, CV_64F);
+//    cv::Mat tmp(8, 6, CV_64F);
 //    for (int i = 0; i < 8; ++i)
 //    {
 //        //Robot.goTo and wait
@@ -762,19 +867,19 @@ cv::Mat TenzoMath::qi(const double& alpha, const  double& q) const
 //
 //        //readData and put it in arrays
 //        std::array<double, 6> tmp = tenzoData.readData();
-//        collectedData.at<double>(i, 0) = tmp[1];
-//        collectedData.at<double>(i, 1) = -tmp[0];
-//        collectedData.at<double>(i, 2) = -tmp[2];
-//        collectedData.at<double>(i, 3) = -tmp[4];
-//        collectedData.at<double>(i, 4) = tmp[3];
-//        collectedData.at<double>(i, 5) = tmp[5];
+//        tmp.at<double>(i, 0) = tmp[1];
+//        tmp.at<double>(i, 1) = -tmp[0];
+//        tmp.at<double>(i, 2) = -tmp[2];
+//        tmp.at<double>(i, 3) = -tmp[4];
+//        tmp.at<double>(i, 4) = tmp[3];
+//        tmp.at<double>(i, 5) = tmp[5];
 //        std::cout << i << std::endl;
 //    }
 //    std::cout << "collected";
 //    std::ofstream out("collectedTestData.txt");
 //    for (int i = 0; i < 8; ++i)
 //        for (int j = 0; j < 6; ++j)
-//            out << collectedData.at<double>(i, j) << ' ';
+//            out << tmp.at<double>(i, j) << ' ';
 //    out.close();
 //}
 //
@@ -854,7 +959,7 @@ cv::Mat TenzoMath::qi(const double& alpha, const  double& q) const
 //
 //    std::array<double, 6> rawData;
 //
-//    std::ifstream in("collectedData.txt");
+//    std::ifstream in("tmp.txt");
 //    for (int i = 0; i < 8; ++i)
 //    {
 //        for (int j = 0; j < 6; ++j)
@@ -880,3 +985,100 @@ cv::Mat TenzoMath::qi(const double& alpha, const  double& q) const
 //    }
 //    in.close();
 //}
+/*void TenzoMath::ftControlCartesianCoord()
+{
+    std::array<double, 6> worldPos = {
+        985.0, 0.0, 940.0, -180.0, 0.0, 0.0
+    };
+    Tenzo tenzoData(_T("COM6"));
+    cv::Mat forces(1, 3, cv::DataType<double>::type);
+    cv::Mat torques(1, 3, cv::DataType<double>::type);
+    cv::Mat currRot(3, 3, cv::DataType<double>::type);
+    constexpr double coefForces = 0.005;
+    constexpr double coefTorques = 0.001;
+    constexpr double threshold = 150;
+    _fanuc.startWorking();
+    _fanuc.setWorldFrame();
+    std::chrono::time_point<std::chrono::steady_clock> start;
+    while (true)
+    {
+        
+       /* start = std::chrono::system_clock::now();
+
+std::array<double, 6> tmp = swapData(tenzoData.readData());
+
+/* end = std::chrono::system_clock::now();
+int elapsed_seconds = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+std::time_t end_time = std::chrono::system_clock::to_time_t(end);
+
+std::cout << "read time: " << elapsed_seconds << "ms\n";
+
+start = std::chrono::system_clock::now();
+
+currRot = _model.rotMatrix(worldPos[3] / 180.0 * PI, worldPos[4] / 180.0 * PI,
+    worldPos[5] / 180.0 * PI);
+
+std::array<double, 6> newData = gravCompensation(currRot, tmp);
+forces.at<double>(0, 0) = (abs(newData[0]) < threshold ? 0 : newData[0] * coefForces);
+forces.at<double>(0, 1) = (abs(newData[1]) < threshold ? 0 : newData[1] * coefForces);
+forces.at<double>(0, 2) = (abs(newData[2]) < threshold ? 0 : newData[2] * coefForces);
+torques.at<double>(0, 0) = (abs(newData[3]) < threshold ? 0 : newData[3] * coefTorques);
+torques.at<double>(0, 1) = (abs(newData[4]) < threshold ? 0 : newData[4] * coefTorques);
+torques.at<double>(0, 2) = (abs(newData[5]) < threshold ? 0 : newData[5] * coefTorques * 5);
+
+forces *= currRot.t();
+torques *= currRot.t();
+
+/* std::cout << forces.at<double>(0, 0) << '\t' << forces.at<double>(0, 1) << '\t' << forces.at<double>(0, 2) << '\t'
+<< torques.at<double>(0, 0) << '\t' << torques.at<double>(0, 1) << '\t' << torques.at<double>(0, 2) << std::endl;
+
+worldPos[0] += forces.at<double>(0, 0);
+worldPos[1] += forces.at<double>(0, 1);
+worldPos[2] += forces.at<double>(0, 2);
+worldPos[3] += torques.at<double>(0, 0);
+worldPos[4] -= torques.at<double>(0, 1);
+worldPos[5] -= torques.at<double>(0, 2);
+
+/* for (int i = 3; i < 6; ++i)
+{
+if (worldPos[i] > 180.0f)
+worldPos[i] -= 360.0f;
+if (worldPos[i] < -180.0f)
+worldPos[i] += 360.0f;
+}*/
+/*for (int i = 0; i < 6; ++i)
+{
+std::cout << worldPos[i] << '\t';
+}
+std::cout << std::endl;*/
+/* end = std::chrono::system_clock::now();
+elapsed_seconds = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+end_time = std::chrono::system_clock::to_time_t(end);
+std::cout << "calc time: " << elapsed_seconds << "ms\n";
+
+start = std::chrono::steady_clock::now();
+_fanuc.goToCoordinates(worldPos[0], worldPos[1], worldPos[2], worldPos[3], worldPos[4],
+    worldPos[5]);
+
+std::array<double, 6> rec = _fanuc.getJointAngles();
+//_fanuc.getJointAngles();
+std::chrono::duration<double, std::ratio<1, 1000>> end = std::chrono::steady_clock::now() - start;
+//int elapsed_seconds = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+//std::time_t end_time = std::chrono::steady_clock::to_time_t(end);
+std::cout << "work time: " << end.count() << "ms\n";// << std::ctime(&end_time);
+
+                                                    /*std::cout << "send: " << worldPos[0] << '\t' << worldPos[1] << '\t' << worldPos[2] << '\t'
+                                                    << worldPos[3] << '\t' << worldPos[4] << '\t' << worldPos[5] << std::endl;
+
+                                                    std::cout << "rec: " << rec[0] << '\t' << rec[1] << '\t' << rec[2] << '\t'
+                                                    << rec[3] << '\t' << rec[4] << '\t' << rec[5] << std::endl;*/
+
+/*  end = std::chrono::system_clock::now();
+                                                    int elapsed_seconds = std::chrono::duration_cast<std::chrono::milliseconds>
+                                                    (end - start).count();
+                                                    std::time_t end_time = std::chrono::system_clock::to_time_t(end);
+                                                    std::cout << "time: " << elapsed_seconds << "ms\n";
+                                                    // std::this_thread::sleep_for(std::chrono::milliseconds(55));
+    }
+}
+*/
