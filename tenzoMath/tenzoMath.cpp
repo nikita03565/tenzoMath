@@ -27,14 +27,14 @@ void printCvMat(cv::Mat t, const char str[] = "some matrix")
 
 
 
-TenzoMath::TenzoMath() : _xMin (680.),
+TenzoMath::TenzoMath() : _g((cv::Mat_<double>(3, 1) << 0, 0, -1)),
+                         _r((cv::Mat_<double>(3, 3) << 0, -1, 0, 1, 0, 0, 0, 0, -1)),
+                         _xMin (680.),
                          _yMin (-465.),
                          _zMin ( 520.),
                          _xMax ( 1380.),
                          _yMax ( 465.),
-                         _zMax ( 1300.),
-                         _r((cv::Mat_<double>(3, 3) << 0, -1, 0, 1, 0, 0, 0, 0, -1)),
-                         _g((cv::Mat_<double>(3, 1) << 0, 0, -1))
+                         _zMax ( 1300.)
 {
     _positions = {
         {
@@ -62,10 +62,6 @@ TenzoMath::TenzoMath() : _xMin (680.),
 
 std::array<double, 6> TenzoMath::swapData(const std::array<double, 6> data) const
 {
-   /* for (int i = 0; i < 6; ++i)
-    {
-        std::cout << data[i] << '\t';
-    }*/
     cv::Mat f = cv::Mat::zeros(1, 3, cv::DataType<double>::type);
     cv::Mat t = cv::Mat::zeros(1, 3, cv::DataType<double>::type);
     std::array<double, 6> tmp;
@@ -311,142 +307,6 @@ void TenzoMath::loadCalibData()
     input.close();
 }
 
-
-//void TenzoMath::ftControlCartesianCoord()
-//{
-//    std::array<double, 6> worldPos = {
-//        985.0, 0.0, 940.0, -180.0, 0.0, 0.0
-//    };
-//    std::array<double, 6> jointPos = {
-//        0.0, 0.0, 0.0, 0.0, -90.0, 0.0
-//    };
-//    cv::Mat curPos = _model.fanucForwardTask(jointPos);
-//    std::cout << "start:\n" << curPos << '\n';
-//    worldPos = FanucModel::getCoordsFromMat(curPos);
-//    worldPos[3] *= (180.0 / PI);
-//    worldPos[4] *= (180.0 / PI);
-//    worldPos[5] *= (180.0 / PI);
-//    for (int i = 0; i < 6; ++i)
-//    {
-//        std::cout << worldPos[i] << '\t';
-//    }
-//    std::cout << "\n\n";
-//    std::cin.get();
-//    //Tenzo tenzoData(_T("COM6"));
-//    cv::Mat forces(1, 3, cv::DataType<double>::type);
-//    cv::Mat torques(1, 3, cv::DataType<double>::type);
-//    cv::Mat currRot(3, 3, cv::DataType<double>::type);
-//    constexpr double coefForces = 0.0025;
-//    constexpr double coefTorques = 0.0005;
-//    constexpr double threshold = 150;
-//    forces.at<double>(0, 0) = forces.at<double>(0, 1) = forces.at<double>(0, 2) = 5;
-//    torques.at<double>(0, 0) = torques.at<double>(0, 1) = torques.at<double>(0, 2) = 1;
-//   // _fanuc.startWorking();
-//   // _fanuc.setWorldFrame();
-//    // std::ofstream delta("delta.txt");
-//    // std::ofstream readings("delta3.txt");
-//    // std::ofstream out("readingsOut1.txt");
-//    // std::chrono::time_point<std::chrono::system_clock> start, end;
-//    // start = std::chrono::system_clock::now();
-//    // int deltaTime = 0;
-//    /*cv::Mat f = cv::Mat::zeros(1, 3, cv::DataType<double>::type);
-//    cv::Mat t = cv::Mat::zeros(1, 3, cv::DataType<double>::type);
-//    double Rtmp[9] = { 0, -1, 0, 1, 0, 0, 0, 0, -1 };
-//    cv::Mat R(3, 3, cv::DataType<double>::type, Rtmp);
-//    std::cout << R << '\n';*/
-//    while (true)
-//    {
-//       //std::array<double, 6> tmp = swapData(tenzoData.readData());
-//
-//        currRot = _model.rotMatrix(worldPos[3] / 180.0 * PI, worldPos[4] / 180.0 * PI,
-//            worldPos[5] / 180.0 * PI);
-//        std::array<double, 6> newData = gravCompensation(currRot, tmp);
-//
-//        forces.at<double>(0, 0) = (abs(newData[0]) < threshold ? 0 : newData[0] * coefForces);
-//        forces.at<double>(0, 1) = (abs(newData[1]) < threshold ? 0 : newData[1] * coefForces);
-//        forces.at<double>(0, 2) = (abs(newData[2]) < threshold ? 0 : newData[2] * coefForces);
-//        torques.at<double>(0, 0) = (abs(newData[3]) < threshold ? 0 : newData[3] * coefTorques);
-//        torques.at<double>(0, 1) = (abs(newData[4]) < threshold ? 0 : newData[4] * coefTorques);
-//        torques.at<double>(0, 2) = (abs(newData[5]) < threshold ? 0 : newData[5] * coefTorques * 2.5);
-//        */
-//        //forces *= currRot.t();
-//        //torques *= currRot.t();
-//
-//        double deltaLength = sqrt(forces.at<double>(0, 0) * forces.at<double>(0, 0) + forces.at<double>(0, 1) * forces.at<double>(0, 1)
-//            + forces.at<double>(0, 2) * forces.at<double>(0, 2));
-//        // std::cout << deltaLength << '\n';
-//        if (deltaLength > 20.0)
-//        {
-//            forces.at<double>(0, 0) = forces.at<double>(0, 0) / deltaLength * 20.0;
-//            forces.at<double>(0, 1) = forces.at<double>(0, 0) / deltaLength * 20.0;
-//            forces.at<double>(0, 2) = forces.at<double>(0, 0) / deltaLength * 20.0;
-//        }
-//        cv::Mat deltaPos = FanucModel::transMatrix(forces.at<double>(0, 0), forces.at<double>(0, 1), forces.at<double>(0, 2),
-//            torques.at<double>(0, 0), torques.at<double>(0, 1), torques.at<double>(0, 2));
-//        auto deltaCoord = FanucModel::getCoordsFromMat(deltaPos);
-//        deltaCoord[3] *= (180.0 / PI);
-//        deltaCoord[4] *= (180.0 / PI);
-//        deltaCoord[5] *= (180.0 / PI);
-//        for (int i = 0; i < 6; ++i)
-//        {
-//            std::cout << deltaCoord[i] << '\t';
-//        }
-//        std::cout << std::endl;
-//        curPos =  curPos * deltaPos;
-//        std::cout << deltaPos << '\n' << curPos << '\n';
-//        worldPos = FanucModel::getCoordsFromMat(curPos);
-//        worldPos[3] *= (180.0 / PI);
-//        worldPos[4] *= (180.0 / PI);
-//        worldPos[5] *= (180.0 / PI);
-//        /* worldPos[0] += forces.at<double>(0, 0);
-//        worldPos[1] += forces.at<double>(0, 1);
-//        worldPos[2] += forces.at<double>(0, 2);
-//        worldPos[3] += torques.at<double>(0, 0);
-//        worldPos[4] += torques.at<double>(0, 1);
-//        worldPos[5] += torques.at<double>(0, 2);*/
-//
-//
-//        //std::cout << deltaLength << '\n';
-//        /*for (int i = 3; i < 6; ++i)
-//        {
-//        if (worldPos[i] > 180.0f)
-//        worldPos[i] -= 360.0f;
-//        if (worldPos[i] < -180.0f)
-//        worldPos[i] += 360.0f;
-//        }*/
-//        for (int i = 0; i < 6; ++i)
-//        {
-//            std::cout << worldPos[i] << '\t';
-//        }
-//        std::cout << std::endl;
-//        std::cin.get();
-//        // end = std::chrono::system_clock::now();
-//
-//        // unsigned long elapsed_seconds1 = std::chrono::duration_cast<std::chrono::microseconds>
-//        //     (end - start1).count();
-//
-//        // double velocity = deltaLength / elapsed_seconds1;
-//        //// std::cout << deltaLength << ' ' << velocity << '\n';
-//        // unsigned long elapsed_seconds = std::chrono::duration_cast<std::chrono::milliseconds>
-//        //     (end - start).count();
-//
-//
-//        //  std::cout << elapsed_seconds << ' ' << forces.at<double>(0, 0) << ' ' << forces.at<double>(0, 1) << ' ' << forces.at<double>(0, 2) << ' ' <<
-//        //     torques.at<double>(0, 0) << ' ' << torques.at<double>(0, 1) << ' ' << torques.at<double>(0, 2) << '\n';
-//        // out << elapsed_seconds << ' ' << forces.at<double>(0, 0) << ' ' << forces.at<double>(0, 1) << ' ' << forces.at<double>(0, 2) << ' ' <<
-//        //      torques.at<double>(0, 0) << ' ' << torques.at<double>(0, 1) << ' ' << torques.at<double>(0, 2) << '\n';
-//        // std::time_t end_time = std::chrono::system_clock::to_time_t(end);
-//        /* std::cout << elapsed_seconds << ' ' << velocity << '\n';
-//        out << elapsed_seconds << ' ' << velocity << '\n';*/
-//
-//       // _fanuc.goToCoordinates(worldPos[0], worldPos[1], worldPos[2], worldPos[3], worldPos[4],
-//       //     worldPos[5]);
-//
-//       // _fanuc.getJointAngles();
-//    }
-//}
-
-
 void TenzoMath::ftControlCartesianCoord()
 {
     std::array<double, 6> worldPos = {
@@ -466,22 +326,30 @@ void TenzoMath::ftControlCartesianCoord()
     cv::Mat forces(1, 3, cv::DataType<double>::type);
     cv::Mat torques(1, 3, cv::DataType<double>::type);
     cv::Mat currRot(3, 3, cv::DataType<double>::type);
-    constexpr double coefForces = 0.0025;
-    constexpr double coefTorques = 0.0005;
+    constexpr double coefForces = 0.005;
+    constexpr double coefTorques = 0.001;
     constexpr double threshold = 250;
 
-    //double cos;
-    //double coef;
+    
+
+    double sumDeltaF = 0.0;
+    double sumDeltaT = 0.0;
+
+    double defaultValue = 0.01;
+
+    double coefF = defaultValue;
+    double coefT = defaultValue;
 
     cv::Mat prevF = cv::Mat::zeros(1, 3, cv::DataType<double>::type);
+    cv::Mat prevT = cv::Mat::zeros(1, 3, cv::DataType<double>::type);
 
     _fanuc.startWorking();
     _fanuc.setWorldFrame();
-   
-    std::deque<double> coefsF = {0.1, 0.1, 0.1};
-    std::array<double, 4> weightsF = { 1.0, 1.0, 1.0, 1.0};
+    std::chrono::time_point<std::chrono::system_clock> start;
     while (true)
     {
+        
+
         std::array<double, 6> tmp = swapData(tenzoData.readData());
        
         currRot = _model.rotMatrix(worldPos[3] / 180.0 * PI, worldPos[4] / 180.0 * PI,
@@ -495,77 +363,111 @@ void TenzoMath::ftControlCartesianCoord()
         torques.at<double>(0, 0) = (abs(newData[3]) < threshold ? 0 : newData[3] * coefTorques);
         torques.at<double>(0, 1) = (abs(newData[4]) < threshold ? 0 : newData[4] * coefTorques);
         torques.at<double>(0, 2) = (abs(newData[5]) < threshold ? 0 : newData[5] * coefTorques * 2.5);
+     
+        ///////////////////////////////////////////////////////////////////////////////////////
+        if (cv::countNonZero(forces) == 0 || cv::countNonZero(prevF) == 0)
+        {
+            coefF = defaultValue;
+            sumDeltaF = 0.0;
+        } else
+        {
+            cv::Mat forcesTmp = forces * currRot.t();
+            cv::Mat prevFTmp = prevF * currRot.t();
+            //std::cout << "cur :\n" << forcesTmp << "\nprev:\n" << prevTmp << "\n";
 
-        //if (cv::countNonZero(forces) == 0)
-        //{         
-        //    coefsF.pop_front();
-        //    coefsF.push_back(0.1);         
-        //}
-        //else if(cv::countNonZero(prevF) == 0)
-        //{ 
-        //    coefsF.pop_front();
-        //    coefsF.push_back(0.1);          
-        //} 
-        //else
-        //{
-        //    cv::Mat forcesTmp = forces * currRot.t();
-        //    cv::Mat prevFTmp = prevF * currRot.t();
-        //    //std::cout << "cur :\n" << forcesTmp << "\nprev:\n" << prevTmp << "\n";
-        //    
-        //    double cos = prevFTmp.dot(forcesTmp) / (cv::norm(prevFTmp) * cv::norm(forcesTmp));
-        //    double cosa2 = sqrt(0.5 + 0.5 * cos) + 1e-6;
+            double cos = prevFTmp.dot(forcesTmp) / (cv::norm(prevFTmp) * cv::norm(forcesTmp));
+            double cosa2 = sqrt(0.5 + 0.5 * cos);
 
-        //    if (cosa2 < 0.2)
-        //    {
-        //        std::cout << "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n";
-        //        for (auto it = coefsF.begin(); it != coefsF.end(); ++it)
-        //        {
-        //            std::cout << *it << ' ';                  
-        //        }
-        //        std::cout << '\n';
-        //        coefsF = { 0.1, 0.1, 0.1 };
-        //        for (auto it = coefsF.begin(); it != coefsF.end(); ++it)
-        //        {
-        //            std::cout << *it << ' ';
-        //        }
-        //        std::cout << '\n';
-        //    }
-        //    
-        //    double znamen = 0;
-        //    std::cout << "n: " << coefsF.size() << '\n';
-        //    int i = 0;
-        //    for (auto it = coefsF.begin(); it != coefsF.end(); ++it, ++i)
-        //    {
-        //        std::cout << *it << ' ';
-        //        znamen += weightsF[i] / *it;    
-        //    }
-        //    std::cout << '\n';
-        //    znamen += weightsF[3] / cosa2;
 
-        //    coefsF.pop_front();
-        //    coefsF.push_back(4.0 / znamen);
-        //    
-        //    if (isnan(coefsF.back()))
-        //    {
-        //        std::cout << "broken\n\a" << cv::norm(prevFTmp) << ' ' << cv::norm(forcesTmp) << '\n'
-        //             << '\n' << cosa2 << '\n' << znamen << '\n';
-        //        assert(true);
-        //        std::cin.get();
-        //    }
-        //}
+            if (cosa2 < 0.7)
+            {
+                std::cout << "forces!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n";
+            
+                coefF = 0.001;
+                sumDeltaF = 0.0;
+                coefT = 0.001;
+                sumDeltaT = 0.0;
+            }
+            else
+            {      
+                if (coefF < 1.0)
+                {
+                    sumDeltaF += cv::norm(forces) * coefF;
+                    if (sumDeltaF < 30)
+                    {
+                        coefF += 0.001;                     
+                    }
+                    else if (sumDeltaF < 100)
+                    {
+                        coefF += 0.01;
+                    } 
+                    else
+                    {
+                        coefF += 0.04;
+                    }                   
+                } else
+                {
+                    coefF = 1.0;
+                }
+            }
+        }
+  
+        //////////////////////////////////////////////////////////////
+        if (cv::countNonZero(torques) == 0 || cv::countNonZero(prevT) == 0)
+        {
+            coefT = defaultValue;
+            sumDeltaT = 0.0;
+        }
+        else
+        {
+            cv::Mat torquesTmp = torques * currRot.t();
+            cv::Mat prevTTmp = prevT * currRot.t();
+            //std::cout << "cur :\n" << torquesTmp << "\nprev:\n" << prevTmp << "\n";
 
-        cv::Mat forcesTmp = forces * currRot.t();
-        cv::Mat prevFTmp = prevF * currRot.t();
-        double cos = prevFTmp.dot(forcesTmp) / (cv::norm(prevFTmp) * cv::norm(forcesTmp));
+            double cos = prevTTmp.dot(torquesTmp) / (cv::norm(prevTTmp) * cv::norm(torquesTmp));
+            double cosa2 = sqrt(0.5 + 0.5 * cos);
 
-        std::cout << "cos = " << cos << '\n' << forcesTmp << '\n';
-       // std::cout << coefsF.back() << "\n";
 
-        forces *= coefsF.back();
-        torques *= coefsF.back();
+            if (cosa2 < 0.7)
+            {
+                std::cout << "torques!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n";
+                coefT = 0.001;
+                sumDeltaT = 0.0;
+                coefF = 0.001;
+                sumDeltaF = 0.0;
+            }
+            else
+            {
+                if (coefT < 1.0)
+                {
+                    sumDeltaT += cv::norm(torques) * coefT;
+                    if (sumDeltaT < 20)
+                    {
+                        coefT += 0.001;
+                    }
+                    else if (sumDeltaT < 80)                 
+                    {
+                        coefT += 0.01;
+                    }
+                    else
+                    {
+                        coefT += 0.04;
+                    }
+                }
+                else
+                {
+                    coefT = 1.0;
+                }
+            }
+        }
+
+       // std::cout << coefF << ' ' << coefT << '\n';
+
+        forces *= coefF;
+        torques *= coefT;
 
         prevF = forces.clone();
-
+        prevT = torques.clone();
         cv::Mat deltaPos = FanucModel::transMatrix(forces.at<double>(0, 0), forces.at<double>(0, 1), forces.at<double>(0, 2),
             torques.at<double>(0, 0), torques.at<double>(0, 1), torques.at<double>(0, 2));
 
@@ -575,9 +477,15 @@ void TenzoMath::ftControlCartesianCoord()
         worldPos[4] *= (180.0 / PI);
         worldPos[5] *= (180.0 / PI);
 
+        
+        start = std::chrono::system_clock::now();
         _fanuc.goToCoordinates(worldPos[0], worldPos[1], worldPos[2], worldPos[3], worldPos[4], worldPos[5]);
         
        _fanuc.getJointAngles();
+       int elapsed_seconds = std::chrono::duration_cast<std::chrono::milliseconds>
+           (std::chrono::system_clock::now() - start).count();
+
+       std::cout << coefF << ' ' << coefT << ' ' << elapsed_seconds << " ms\n";
     }
 }
 
@@ -699,386 +607,3 @@ std::array<double, 6> TenzoMath::chooseNearestPose(cv::Mat res, std::array<doubl
     }
     return prevPos;
 }
-
-//
-//void TenzoMath::ftControlJoints()
-//{
-//    std::array<double, 3> posCartesian = { 985, 0, 1040 };
-//    std::array<double, 6> jointPos = { 0, 0, 0, 0, -90, 0 };
-//
-//    std::string errorMessage;
-//
-//    Tenzo tenzoData(L"COM6");
-//    cv::Mat forces(1, 3, cv::DataType<double>::type);
-//    cv::Mat torques(1, 3, cv::DataType<double>::type);
-//    constexpr double coefForces = 0.005;
-//    constexpr double coefTorques = 0.001;
-//    constexpr double threshold = 150;
-//    _fanuc.startWorking();
-//    _fanuc.setJointFrame();
-//    while (true)
-//    {
-//        cv::Mat p6 = _model.fanucForwardTask(jointPos);
-//
-//        std::array<double, 6> tmp = swapData(tenzoData.readData());
-//  
-//        std::array<double, 6> newData = gravCompensation(p6, tmp);
-//        forces.at<double>(0, 0) = (abs(newData[0]) < threshold ? 0 : newData[0] * coefForces);
-//        forces.at<double>(0, 1) = (abs(newData[1]) < threshold ? 0 : newData[1] * coefForces);
-//        forces.at<double>(0, 2) = (abs(newData[2]) < threshold ? 0 : newData[2] * coefForces);
-//        torques.at<double>(0, 0) = (abs(newData[3]) < threshold ? 0 : newData[3] * coefTorques);
-//        torques.at<double>(0, 1) = (abs(newData[4]) < threshold ? 0 : newData[4] * coefTorques);
-//        torques.at<double>(0, 2) = (abs(newData[5]) < threshold ? 0 : newData[5] * coefTorques * 5);
-//
-//        cv::Mat rot(3, 3, cv::DataType<double>::type);
-//        p6(cv::Rect(0, 0, 3, 3)).copyTo(rot);
-//        forces *= rot.t();
-//        torques *= rot.t();
-//
-//        if (posCartesian[0] + forces.at<double>(0, 0) > _xMax) errorMessage = "Exceeding the maximum limits  X axis";
-//        if (posCartesian[0] + forces.at<double>(0, 0) < _xMin) errorMessage = "Exceeding the minimum limits  X axis";
-//
-//        if (posCartesian[1] + forces.at<double>(0, 1) > _yMax) errorMessage = "Exceeding the maximum limits  Y axis";
-//        if (posCartesian[1] + forces.at<double>(0, 1)  < _yMin) errorMessage = "Exceeding the minimum limits  Y axis";
-//
-//        if (posCartesian[2] + forces.at<double>(0, 2) > _zMax) errorMessage = "Exceeding the maximum limits  Z axis";
-//        if (posCartesian[2] + forces.at<double>(0, 2) < _zMin) errorMessage = "Exceeding the minimum limits  Z axis";
-//
-//        if (errorMessage.empty())
-//        {
-//            posCartesian[0] += forces.at<double>(0, 0);
-//            posCartesian[1] += forces.at<double>(0, 1);
-//            posCartesian[2] += forces.at<double>(0, 2);
-//            //jointPos[3] -= torques.at<double>(0, 0);
-//            //jointPos[4] = jointPos[4] - torques.at<double>(0, 1) + jointPos[2];
-//            //jointPos[5] += torques.at<double>(0, 2);
-//            //std::cout << errorMessage << std::endl;
-//            cv::Mat res = inverseTask(posCartesian[0], posCartesian[1], posCartesian[2]);
-//            std::array<double, 3> nearest = chooseNearestPose(res, { jointPos[0], jointPos[1], jointPos[2] });
-//            jointPos[4] = jointPos[4] - (nearest[2] - jointPos[2]);
-//            jointPos[0] = nearest[0];
-//            jointPos[1] = nearest[1];
-//            jointPos[2] = nearest[2];
-//           
-//            //std::cout << //posCartesian[0] << '\t' << posCartesian[1] << '\t' << posCartesian[2] << ": " <<
-//            //      jointPos[3] << '\t' << jointPos[4] << '\t' << jointPos[5] << '\t';
-//            std::cout << jointPos[0] << '\t' << jointPos[1] << '\t' << jointPos[2] << ": " <<
-//                jointPos[3] << '\t' << jointPos[4] << '\t' << jointPos[5] << '\t';
-//            std::cout << std::endl;
-//            _fanuc.goToCoordinates(jointPos[0], jointPos[1], jointPos[2], jointPos[3], jointPos[4], jointPos[5]);
-//            std::this_thread::sleep_for(std::chrono::milliseconds(100));
-//        }
-//        else
-//        {
-//            errorMessage.clear();
-//        }
-//    }     
-//}
-//
-//void TenzoMath::collectTestData()
-//{
-//    if (!_isConnectedFanuc)
-//    {
-//        _fanuc.startWorking();
-//        _fanuc.setJointFrame();
-//        _isConnectedFanuc = true;
-//    }
-//    Tenzo tenzoData(L"COM6");
-//
-//    std::array<std::array<double, 6>, 8> pos = {
-//        {
-//            {
-//                -5,
-//                -3,
-//                -10,
-//                -120,
-//                -90,
-//                66
-//            },
-//            {
-//                -0.917,
-//                -8.377,
-//                -9.526,
-//                -165.933,
-//                -40.823,
-//                19.290
-//            },
-//            {
-//                -4.872,
-//                -0.907,
-//                -10.075,
-//                -118.418,
-//                -107.636,
-//                -53.147
-//            },
-//            {
-//                3.921,
-//                1.569,
-//                -10.065,
-//                120.544,
-//                -128.754,
-//                -42.986
-//            },
-//            {
-//                -5,
-//                -3,
-//                -10,
-//                -120,
-//                -90,
-//                66
-//            },
-//            {
-//                -0.917,
-//                -8.377,
-//                -9.526,
-//                -165.933,
-//                -40.823,
-//                19.290
-//            },
-//            {
-//                -4.872,
-//                -0.907,
-//                -10.075,
-//                -118.418,
-//                -107.636,
-//                -53.147
-//            },
-//            {
-//                3.921,
-//                1.569,
-//                -10.065,
-//                120.544,
-//                -128.754,
-//                -42.986
-//            }
-//            //, { 5.038, -3.019, -10.013, 120.297, -90.957, -65.788 }, 
-//            //{ 5.167, -0.667, -3.718, 62.598, -93.559, 46.617 }, { 0.939, -8.375, -9.528, 165.796, -40.788, -19.003 },
-//            //	{ 0, 0, 0, 0, -60, 30 }, { 0, 0, 0, 0, -60, -30 },{ 0, 0, 0, 50, -60, -30 }
-//        }
-//    };
-//
-//    cv::Mat tmp(8, 6, CV_64F);
-//    for (int i = 0; i < 8; ++i)
-//    {
-//        //Robot.goTo and wait
-//        _fanuc.goToCoordinates(pos[i][0], pos[i][1], pos[i][2], pos[i][3], pos[i][4], pos[i][5]);
-//
-//        getchar();
-//
-//        //readData and put it in arrays
-//        std::array<double, 6> tmp = tenzoData.readData();
-//        tmp.at<double>(i, 0) = tmp[1];
-//        tmp.at<double>(i, 1) = -tmp[0];
-//        tmp.at<double>(i, 2) = -tmp[2];
-//        tmp.at<double>(i, 3) = -tmp[4];
-//        tmp.at<double>(i, 4) = tmp[3];
-//        tmp.at<double>(i, 5) = tmp[5];
-//        std::cout << i << std::endl;
-//    }
-//    std::cout << "collected";
-//    std::ofstream out("collectedTestData.txt");
-//    for (int i = 0; i < 8; ++i)
-//        for (int j = 0; j < 6; ++j)
-//            out << tmp.at<double>(i, j) << ' ';
-//    out.close();
-//}
-//
-//void TenzoMath::doTest()
-//{
-//    std::array<std::array<double, 6>, 8> pos = {
-//        {
-//            {
-//                -5,
-//                -3,
-//                -10,
-//                -120,
-//                -90,
-//                66
-//            },
-//            {
-//                -0.917,
-//                -8.377,
-//                -9.526,
-//                -165.933,
-//                -40.823,
-//                19.290
-//            },
-//            {
-//                -4.872,
-//                -0.907,
-//                -10.075,
-//                -118.418,
-//                -107.636,
-//                -53.147
-//            },
-//            {
-//                3.921,
-//                1.569,
-//                -10.065,
-//                120.544,
-//                -128.754,
-//                -42.986
-//            },
-//            {
-//                -5,
-//                -3,
-//                -10,
-//                -120,
-//                -90,
-//                66
-//            },
-//            {
-//                -0.917,
-//                -8.377,
-//                -9.526,
-//                -165.933,
-//                -40.823,
-//                19.290
-//            },
-//            {
-//                -4.872,
-//                -0.907,
-//                -10.075,
-//                -118.418,
-//                -107.636,
-//                -53.147
-//            },
-//            {
-//                3.921,
-//                1.569,
-//                -10.065,
-//                120.544,
-//                -128.754,
-//                -42.986
-//            }
-//            //, { 5.038, -3.019, -10.013, 120.297, -90.957, -65.788 }, 
-//            //{ 5.167, -0.667, -3.718, 62.598, -93.559, 46.617 }, { 0.939, -8.375, -9.528, 165.796, -40.788, -19.003 },
-//            //	{ 0, 0, 0, 0, -60, 30 }, { 0, 0, 0, 0, -60, -30 },{ 0, 0, 0, 50, -60, -30 }
-//        }
-//    };
-//
-//    std::array<double, 6> rawData;
-//
-//    std::ifstream in("tmp.txt");
-//    for (int i = 0; i < 8; ++i)
-//    {
-//        for (int j = 0; j < 6; ++j)
-//        {
-//            in >> rawData[j];
-//        }
-//
-//        std::array<double, 6> newData = gravCompensation(_model.fanucForwardTask(pos[i]), rawData);
-//
-//        std::cout << "rawData:\n ";
-//        for (int j = 0; j < 6; ++j)
-//        {
-//            std::cout << rawData[j] << '\t';
-//        }
-//        std::cout << std::endl;
-//
-//        std::cout << "newData:\n ";
-//        for (int j = 0; j < 6; ++j)
-//        {
-//            std::cout << newData[j] << '\t';
-//        }
-//        std::cout << std::endl << std::endl;
-//    }
-//    in.close();
-//}
-/*void TenzoMath::ftControlCartesianCoord()
-{
-    std::array<double, 6> worldPos = {
-        985.0, 0.0, 940.0, -180.0, 0.0, 0.0
-    };
-    Tenzo tenzoData(_T("COM6"));
-    cv::Mat forces(1, 3, cv::DataType<double>::type);
-    cv::Mat torques(1, 3, cv::DataType<double>::type);
-    cv::Mat currRot(3, 3, cv::DataType<double>::type);
-    constexpr double coefForces = 0.005;
-    constexpr double coefTorques = 0.001;
-    constexpr double threshold = 150;
-    _fanuc.startWorking();
-    _fanuc.setWorldFrame();
-    std::chrono::time_point<std::chrono::steady_clock> start;
-    while (true)
-    {
-        
-       /* start = std::chrono::system_clock::now();
-
-std::array<double, 6> tmp = swapData(tenzoData.readData());
-
-/* end = std::chrono::system_clock::now();
-int elapsed_seconds = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
-std::time_t end_time = std::chrono::system_clock::to_time_t(end);
-
-std::cout << "read time: " << elapsed_seconds << "ms\n";
-
-start = std::chrono::system_clock::now();
-
-currRot = _model.rotMatrix(worldPos[3] / 180.0 * PI, worldPos[4] / 180.0 * PI,
-    worldPos[5] / 180.0 * PI);
-
-std::array<double, 6> newData = gravCompensation(currRot, tmp);
-forces.at<double>(0, 0) = (abs(newData[0]) < threshold ? 0 : newData[0] * coefForces);
-forces.at<double>(0, 1) = (abs(newData[1]) < threshold ? 0 : newData[1] * coefForces);
-forces.at<double>(0, 2) = (abs(newData[2]) < threshold ? 0 : newData[2] * coefForces);
-torques.at<double>(0, 0) = (abs(newData[3]) < threshold ? 0 : newData[3] * coefTorques);
-torques.at<double>(0, 1) = (abs(newData[4]) < threshold ? 0 : newData[4] * coefTorques);
-torques.at<double>(0, 2) = (abs(newData[5]) < threshold ? 0 : newData[5] * coefTorques * 5);
-
-forces *= currRot.t();
-torques *= currRot.t();
-
-/* std::cout << forces.at<double>(0, 0) << '\t' << forces.at<double>(0, 1) << '\t' << forces.at<double>(0, 2) << '\t'
-<< torques.at<double>(0, 0) << '\t' << torques.at<double>(0, 1) << '\t' << torques.at<double>(0, 2) << std::endl;
-
-worldPos[0] += forces.at<double>(0, 0);
-worldPos[1] += forces.at<double>(0, 1);
-worldPos[2] += forces.at<double>(0, 2);
-worldPos[3] += torques.at<double>(0, 0);
-worldPos[4] -= torques.at<double>(0, 1);
-worldPos[5] -= torques.at<double>(0, 2);
-
-/* for (int i = 3; i < 6; ++i)
-{
-if (worldPos[i] > 180.0f)
-worldPos[i] -= 360.0f;
-if (worldPos[i] < -180.0f)
-worldPos[i] += 360.0f;
-}*/
-/*for (int i = 0; i < 6; ++i)
-{
-std::cout << worldPos[i] << '\t';
-}
-std::cout << std::endl;*/
-/* end = std::chrono::system_clock::now();
-elapsed_seconds = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
-end_time = std::chrono::system_clock::to_time_t(end);
-std::cout << "calc time: " << elapsed_seconds << "ms\n";
-
-start = std::chrono::steady_clock::now();
-_fanuc.goToCoordinates(worldPos[0], worldPos[1], worldPos[2], worldPos[3], worldPos[4],
-    worldPos[5]);
-
-std::array<double, 6> rec = _fanuc.getJointAngles();
-//_fanuc.getJointAngles();
-std::chrono::duration<double, std::ratio<1, 1000>> end = std::chrono::steady_clock::now() - start;
-//int elapsed_seconds = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
-//std::time_t end_time = std::chrono::steady_clock::to_time_t(end);
-std::cout << "work time: " << end.count() << "ms\n";// << std::ctime(&end_time);
-
-                                                    /*std::cout << "send: " << worldPos[0] << '\t' << worldPos[1] << '\t' << worldPos[2] << '\t'
-                                                    << worldPos[3] << '\t' << worldPos[4] << '\t' << worldPos[5] << std::endl;
-
-                                                    std::cout << "rec: " << rec[0] << '\t' << rec[1] << '\t' << rec[2] << '\t'
-                                                    << rec[3] << '\t' << rec[4] << '\t' << rec[5] << std::endl;*/
-
-/*  end = std::chrono::system_clock::now();
-                                                    int elapsed_seconds = std::chrono::duration_cast<std::chrono::milliseconds>
-                                                    (end - start).count();
-                                                    std::time_t end_time = std::chrono::system_clock::to_time_t(end);
-                                                    std::cout << "time: " << elapsed_seconds << "ms\n";
-                                                    // std::this_thread::sleep_for(std::chrono::milliseconds(55));
-    }
-}
-*/
