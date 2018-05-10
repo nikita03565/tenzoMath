@@ -1,81 +1,41 @@
 #include "fanucModel.h"
-#include <iostream>
-#include <opencv2/core.hpp>
-#include <vector>
+
 #include "poly34.h"
-#define PI 3.14159265
+#include <opencv2/core.hpp>
 
+#include <iostream>
+#include <vector>
+
+
+namespace nikita
+{
 FanucModel::FanucModel()
-    :
-    RoboModel(std::vector<std::array<double, 4>>{
-        {0, 0, 150, PI / 2},
-        {0, 0, 790, 0},
-        {0, 0, 250, PI / 2},
-        {835, 0, 0, -PI / 2},
-        {0, 0, 0, PI / 2},
-        {100, 0, 0, 0},
-        {130, PI / 2, -90, 0},
-        {-190, 0, 0, 0}
-    }),
-    _toCamera((cv::Mat_<double>(4, 4) << 0, -1, 0, -43, 1, 0, 0, -90, 0, 0, 1, 130, 0, 0, 0, 1)),
-    _toSixth((cv::Mat_<double>(4, 4) << 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, -190, 0, 0, 0, 1)),
-    _forMovingToCamera((cv::Mat_<double>(4, 4) << 0, -1, 0, 43, 1, 0, 0, 90, 0, 0, 1, 130, 0, 0, 0, 1))
+     : RoboModel(std::vector<std::array<double, 4>>{
+         {0, 0, 150, PI / 2},
+         { 0, 0, 790, 0 },
+         { 0, 0, 250, PI / 2 },
+         { 835, 0, 0, -PI / 2 },
+         { 0, 0, 0, PI / 2 },
+         { 100, 0, 0, 0 },
+         { 130, PI / 2, -90, 0 },
+         { -190, 0, 0, 0 }
+})
 {
 }
 
-std::vector<RoboModel::DhParameters> FanucModel::getDhParameters() const
+std::vector<double> FanucModel::jointsToQ(const std::array<double, 6>& j)
 {
-    return _kinematicChain;
+    return  { j.at(0) * PI / 180.0, -j.at(1) * PI / 180.0 + PI / 2,
+             (j.at(1) + j.at(2)) * PI / 180.0, -j.at(3) * PI / 180.0,
+              j.at(4) * PI / 180.0, -j.at(5) * PI / 180.0 
+            };
 }
 
-std::vector<double> FanucModel::jointsToQ(std::array<double, 6> j)
+cv::Mat FanucModel::fanucForwardTask(const std::array<double, 6>& inputJoints)
 {
-    //degrees to radians
-    for (int i = 0; i < 6; ++i)
-    {
-        j[i] *= PI / 180.0;
-    }
-    std::vector<double> q;
-    q.resize(6);
-    q[0] = j[0];
-    q[1] = -j[1] + PI / 2;
-    q[2] = j[2] + j[1];
-    q[3] = -j[3];
-    q[4] = j[4];
-    q[5] = -j[5];
-    return q;
-}
-
-cv::Mat FanucModel::fanucForwardTask(const std::array<double, 6> inputjoints)
-{
-    const std::vector<double> q = jointsToQ(inputjoints);
+    const std::vector<double> q = jointsToQ(inputJoints);
     return forwardTask(q);
 }
-
-std::array<double, 3> FanucModel::anglesFromMat(const cv::Mat p6)
-{
-    std::array<double, 3> angleVector;
-    angleVector.at(0) = atan2(p6.at<double>(2, 1), p6.at<double>(2, 2));
-    angleVector.at(1) = atan2(-p6.at<double>(2, 0),
-                              sqrt(p6.at<double>(2, 1) * p6.at<double>(2, 1) + p6.at<double>(2, 2) * p6.at<double>(2, 2)));
-    angleVector.at(2) = atan2(p6.at<double>(1, 0), p6.at<double>(0, 0));
-    return angleVector;
-}
-
-std::array<double, 6> FanucModel::getCoordsFromMat(cv::Mat transformMatrix)
-{
-    std::array<double, 3> wprAngles = anglesFromMat(transformMatrix);
-
-    std::array<double, 6> res;
-    res[0] = transformMatrix.at<double>(0, 3);
-    res[1] = transformMatrix.at<double>(1, 3);
-    res[2] = transformMatrix.at<double>(2, 3);
-    res[3] = wprAngles.at(0);
-    res[4] = wprAngles.at(1);
-    res[5] = wprAngles.at(2);
-    return res;
-}
-
 
 cv::Mat FanucModel::qi(const double& alpha, const double& q) const
 {
@@ -116,64 +76,51 @@ cv::Mat FanucModel::rotMatrix(const double& w, const double& p, const double& r)
     mz.at<double>(0, 1) = -sin(r);
     mz.at<double>(1, 0) = sin(r);
 
-    cv::Mat ans = mz * my * mx;
-    return ans;
+    return mz * my * mx;
 }
 
-cv::Mat FanucModel::transMatrix(const double coord0, const double coord1, const double coord2, const double coord3,
-    const double coord4, const double coord5)
+cv::Mat FanucModel::fanucInverseTask(const std::array<double, 6>& coord) const
 {
-    cv::Mat res = cv::Mat::zeros(4, 4, cv::DataType<double>::type);
-    rotMatrix(coord3 / 180.0 * PI, coord4 / 180.0 * PI, coord5 / 180.0 * PI).copyTo(res(cv::Rect(0, 0, 3, 3)));
-    res.at<double>(0, 3) = coord0;
-    res.at<double>(1, 3) = coord1;
-    res.at<double>(2, 3) = coord2;
-    res.at<double>(3, 3) = 1;
-    return res;
-}
-
-cv::Mat FanucModel::fanucInverseTask(const std::array<double, 6> coord) const
-{
-    std::vector<RoboModel::DhParameters> param = getDhParameters();
+    std::vector<RoboModel::DhParameters> param = _kinematicChain;
 
     const double a = 2 * param[0]._aParam * coord[0];
     const double b = 2 * param[0]._aParam * coord[1];
     const double c = 2 * param[1]._aParam * param[2]._aParam - 2 * param[1]._dParam * param[3]._dParam *
-                     sin(param[1]._alphaParam) * sin(param[2]._alphaParam);
+        sin(param[1]._alphaParam) * sin(param[2]._alphaParam);
     const double d = 2 * param[2]._aParam * param[1]._dParam * sin(param[1]._alphaParam) + 2 * param[1]._aParam * param[3]._dParam
-                     * sin(param[2]._alphaParam);
+        * sin(param[2]._alphaParam);
     const double e = param[1]._aParam * param[1]._aParam + param[2]._aParam * param[2]._aParam + param[1]._dParam *
-                     param[1]._dParam + param[2]._dParam * param[2]._dParam + param[3]._dParam * param[3]._dParam -
-                     param[0]._aParam * param[0]._aParam - coord[0] * coord[0] - coord[1] * coord[1] - 
-                     (coord[2] - param[0]._dParam) * (coord[2] - param[0]._dParam) + 2 *
-                     param[1]._dParam * param[2]._dParam * cos(param[1]._alphaParam) + 2 * param[1]._dParam * param[3]._dParam *
-                     cos(param[1]._alphaParam) * cos(param[2]._alphaParam) + 2 * param[2]._dParam * param[3]._dParam * cos(param[2]._alphaParam);
+        param[1]._dParam + param[2]._dParam * param[2]._dParam + param[3]._dParam * param[3]._dParam -
+        param[0]._aParam * param[0]._aParam - coord[0] * coord[0] - coord[1] * coord[1] -
+        (coord[2] - param[0]._dParam) * (coord[2] - param[0]._dParam) + 2 *
+        param[1]._dParam * param[2]._dParam * cos(param[1]._alphaParam) + 2 * param[1]._dParam * param[3]._dParam *
+        cos(param[1]._alphaParam) * cos(param[2]._alphaParam) + 2 * param[2]._dParam * param[3]._dParam * cos(param[2]._alphaParam);
     const double f = coord[1] * sin(param[0]._alphaParam);
     const double g = -coord[0] * sin(param[0]._alphaParam);
     const double h = -param[3]._dParam * sin(param[1]._alphaParam) * sin(param[2]._alphaParam);
     const double i = param[2]._aParam * sin(param[1]._alphaParam);
     const double j = param[1]._dParam + param[2]._dParam * cos(param[1]._alphaParam) + param[3]._dParam *
-                     cos(param[1]._alphaParam) * cos(param[2]._alphaParam) - (coord[2] - param[0]._dParam) *
-                     cos(param[0]._alphaParam);
+        cos(param[1]._alphaParam) * cos(param[2]._alphaParam) - (coord[2] - param[0]._dParam) *
+        cos(param[0]._alphaParam);
     const double r = 4. * param[0]._aParam * param[0]._aParam * (j - h) * (j - h) + sin(param[0]._alphaParam) *
-                     sin(param[0]._alphaParam) * (e - c) * (e - c)
-                     - 4. * param[0]._aParam * param[0]._aParam * sin(param[0]._alphaParam) * sin(param[0]._alphaParam)
-                     * (coord[0] * coord[0] + coord[1] * coord[1]);
+        sin(param[0]._alphaParam) * (e - c) * (e - c)
+        - 4. * param[0]._aParam * param[0]._aParam * sin(param[0]._alphaParam) * sin(param[0]._alphaParam)
+        * (coord[0] * coord[0] + coord[1] * coord[1]);
     const double s = 4. * (4. * param[0]._aParam * param[0]._aParam * i * (j - h) + sin(param[0]._alphaParam) *
-                           sin(param[0]._alphaParam) * d *
-                           (e - c));
+        sin(param[0]._alphaParam) * d *
+        (e - c));
     const double t = 2. * (4. * param[0]._aParam * param[0]._aParam * (j * j - h * h + 2 * i * i) +
-                           sin(param[0]._alphaParam) * sin(param[0]._alphaParam)
-                           * (e * e - c * c + 2 * d * d) - 4. * param[0]._aParam * param[0]._aParam *
-                           sin(param[0]._alphaParam) * sin(param[0]._alphaParam) *
-                           (coord[0] * coord[0] + coord[1] * coord[1]));
+        sin(param[0]._alphaParam) * sin(param[0]._alphaParam)
+        * (e * e - c * c + 2 * d * d) - 4. * param[0]._aParam * param[0]._aParam *
+        sin(param[0]._alphaParam) * sin(param[0]._alphaParam) *
+        (coord[0] * coord[0] + coord[1] * coord[1]));
     const double u = 4. * (4. * param[0]._aParam * param[0]._aParam * i * (j + h) +
-                           sin(param[0]._alphaParam) * sin(param[0]._alphaParam) * d * (e + c));
+        sin(param[0]._alphaParam) * sin(param[0]._alphaParam) * d * (e + c));
     const double v = 4. * param[0]._aParam * param[0]._aParam * (h + j) * (h + j) + sin(param[0]._alphaParam) *
-                     sin(param[0]._alphaParam) *
-                     (e + c) * (e + c) - 4. * param[0]._aParam * param[0]._aParam * sin(param[0]._alphaParam) *
-                     sin(param[0]._alphaParam) *
-                     (coord[0] * coord[0] + coord[1] * coord[1]);
+        sin(param[0]._alphaParam) *
+        (e + c) * (e + c) - 4. * param[0]._aParam * param[0]._aParam * sin(param[0]._alphaParam) *
+        sin(param[0]._alphaParam) *
+        (coord[0] * coord[0] + coord[1] * coord[1]);
 
     double x[4];
     const int numberOfRoots = SolveP4(x, s / r, t / r, u / r, v / r);
@@ -195,35 +142,43 @@ cv::Mat FanucModel::fanucInverseTask(const std::array<double, 6> coord) const
     for (int it = 0; it < numberOfRoots; ++it)
     {
         costheta = (-g * (c * cos(theta.at<double>(it, 2)) + d * sin(theta.at<double>(it, 2)) + e) +
-                    b * (h * cos(theta.at<double>(it, 2)) + i * sin(theta.at<double>(it, 2) + j))) / (a * g - f * b);
+            b * (h * cos(theta.at<double>(it, 2)) + i * sin(theta.at<double>(it, 2) + j))) / (a * g - f * b);
         sintheta = (f * (c * cos(theta.at<double>(it, 2)) + d * sin(theta.at<double>(it, 2)) + e) -
-                    a * (h * cos(theta.at<double>(it, 2)) + i * sin(theta.at<double>(it, 2) + j))) / (a * g - f * b);
+            a * (h * cos(theta.at<double>(it, 2)) + i * sin(theta.at<double>(it, 2) + j))) / (a * g - f * b);
         if (sintheta >= 0)
+        {
             theta.at<double>(it, 0) = acos(costheta);
+        }
         else
+        {
             theta.at<double>(it, 0) = -acos(costheta);
+        }
     }
 
     for (int it = 0; it < numberOfRoots; ++it)
     {
         const double a11 = param[1]._aParam + param[2]._aParam * cos(theta.at<double>(it, 2)) +
-                           param[3]._dParam * sin(param[2]._alphaParam) * sin(theta.at<double>(it, 2));
+            param[3]._dParam * sin(param[2]._alphaParam) * sin(theta.at<double>(it, 2));
         const double a12 = -param[2]._aParam * cos(param[1]._alphaParam) *
-                           sin(theta.at<double>(it, 2)) + param[2]._dParam * sin(param[1]._alphaParam) + param[3]._dParam *
-                           sin(param[2]._alphaParam) * cos(param[1]._alphaParam) * cos(theta.at<double>(it, 2)) +
-                           param[3]._dParam * sin(param[1]._alphaParam) * cos(param[2]._alphaParam);
+            sin(theta.at<double>(it, 2)) + param[2]._dParam * sin(param[1]._alphaParam) + param[3]._dParam *
+            sin(param[2]._alphaParam) * cos(param[1]._alphaParam) * cos(theta.at<double>(it, 2)) +
+            param[3]._dParam * sin(param[1]._alphaParam) * cos(param[2]._alphaParam);
         costheta = (a11 * (coord[0] * cos(theta.at<double>(it, 0)) + coord[1] * sin(theta.at<double>(it, 0)) - param[0]._aParam)
-                    - a12 * (-coord[0] * cos(param[0]._alphaParam) * sin(theta.at<double>(it, 0)) + coord[1] *
-                             cos(param[0]._alphaParam) * cos(theta.at<double>(it, 0)) + (coord[2] - param[0]._dParam) * sin(param[0]._alphaParam)))
-                   / (a11 * a11 + a12 * a12);
+            - a12 * (-coord[0] * cos(param[0]._alphaParam) * sin(theta.at<double>(it, 0)) + coord[1] *
+                cos(param[0]._alphaParam) * cos(theta.at<double>(it, 0)) + (coord[2] - param[0]._dParam) * sin(param[0]._alphaParam)))
+            / (a11 * a11 + a12 * a12);
         sintheta = (a12 * (coord[0] * cos(theta.at<double>(it, 0)) + coord[1] * sin(theta.at<double>(it, 0)) - param[0]._aParam) + a11 *
-                    (-coord[0] * cos(param[0]._alphaParam) * sin(theta.at<double>(it, 0)) + coord[1] *
-                     cos(param[0]._alphaParam) *
-                     cos(theta.at<double>(it, 0)) + (coord[2] - param[0]._dParam) * sin(param[0]._alphaParam))) / (a11 * a11 + a12 * a12);
+            (-coord[0] * cos(param[0]._alphaParam) * sin(theta.at<double>(it, 0)) + coord[1] *
+                cos(param[0]._alphaParam) *
+                cos(theta.at<double>(it, 0)) + (coord[2] - param[0]._dParam) * sin(param[0]._alphaParam))) / (a11 * a11 + a12 * a12);
         if (sintheta >= 0)
+        {
             theta.at<double>(it, 1) = acos(costheta);
+        }
         else
+        {
             theta.at<double>(it, 1) = -acos(costheta);
+        }
     }
     for (int it = 0; it < numberOfRoots; ++it)
     {
@@ -238,16 +193,24 @@ cv::Mat FanucModel::fanucInverseTask(const std::array<double, 6> coord) const
         bool isOk = true;
 
         if (abs(theta.at<double>(it, 0)) > 170. / 180. * PI)
+        {
             isOk = false;
+        }
         if (theta.at<double>(it, 1) > 90. / 180. * PI || theta.at<double>(it, 1) < -70 / 180. * PI)
+        {
             isOk = false;
+        }
         if (theta.at<double>(it, 2) > 200. / 180. * PI || theta.at<double>(it, 2) < -70 / 180. * PI)
+        {
             isOk = false;
+        }
 
         if (!std::isnan(theta.at<double>(it, 1)) && isOk)
+        {
             ind.emplace_back(it);
+        }
     }
-    cv::Mat thetaRes(ind.size(), 6, cv::DataType<double>::type);
+    cv::Mat thetaRes(static_cast<int>(ind.size()), 6, cv::DataType<double>::type);
     for (int it = 0; it < ind.size(); ++it)
     {
         thetaRes.at<double>(it, 0) = theta.at<double>(ind[it], 0);
@@ -262,7 +225,7 @@ cv::Mat FanucModel::fanucInverseTask(const std::array<double, 6> coord) const
     for (int it = 0; it < thetaRes.rows; ++it)
     {
         cv::Mat r36(3, 3, cv::DataType<double>::type), r03(3, 3, cv::DataType<double>::type);
-        std::array<double, 6> q;
+        std::array<double, 6> q{};
         q[0] = thetaRes.at<double>(it, 0);
         q[1] = -thetaRes.at<double>(it, 1) + PI / 2;
         q[2] = thetaRes.at<double>(it, 2) + thetaRes.at<double>(it, 1);
@@ -282,8 +245,8 @@ cv::Mat FanucModel::fanucInverseTask(const std::array<double, 6> coord) const
         thetaPrefinal.at<double>(it * 2, 3) = -(PI - asin(r36.at<double>(1, 2) / sin(thetaPrefinal.at<double>(it * 2, 4))));
         thetaPrefinal.at<double>(it * 2 + 1, 3) = -asin(r36.at<double>(1, 2) / sin(thetaPrefinal.at<double>(it * 2 + 1, 4)));
         thetaPrefinal.at<double>(it * 2, 5) = thetaPrefinal.at<double>(it * 2 + 1, 5) = atan2(r36.at<double>(2, 1), r36.at<double>(2, 0));
-       /* thetaPrefinal.at<double>(it * 2, 5) = -(PI - asin(r36.at<double>(2, 1) / sin(thetaPrefinal.at<double>(it * 2, 4))));
-        thetaPrefinal.at<double>(it * 2 + 1, 5) = -asin(r36.at<double>(2, 1) / sin(thetaPrefinal.at<double>(it * 2 + 1, 4)));*/
+        /* thetaPrefinal.at<double>(it * 2, 5) = -(PI - asin(r36.at<double>(2, 1) / sin(thetaPrefinal.at<double>(it * 2, 4))));
+         thetaPrefinal.at<double>(it * 2 + 1, 5) = -asin(r36.at<double>(2, 1) / sin(thetaPrefinal.at<double>(it * 2 + 1, 4)));*/
     }
 
     std::vector<int> indFinal;
@@ -292,19 +255,25 @@ cv::Mat FanucModel::fanucInverseTask(const std::array<double, 6> coord) const
         bool isOk = true;
 
         if (abs(thetaPrefinal.at<double>(it, 3)) > 210. / 180. * PI)
+        {
             isOk = false;
+        }
         if (abs(thetaPrefinal.at<double>(it, 4)) > 140. / 180. * PI)
+        {
             isOk = false;
+        }
         if (abs(thetaPrefinal.at<double>(it, 5)) > 270. / 180. * PI)
+        {
             isOk = false;
+        }
 
         if (isOk)
         {
-            indFinal.emplace_back(it);
+            indFinal.push_back(it);
         }
     }
 
-    cv::Mat thetaFinal(indFinal.size(), 6, cv::DataType<double>::type);
+    cv::Mat thetaFinal(static_cast<int>(indFinal.size()), 6, cv::DataType<double>::type);
     for (int it = 0; it < indFinal.size(); ++it)
     {
         thetaFinal.at<double>(it, 0) = thetaPrefinal.at<double>(indFinal[it], 0);
@@ -318,7 +287,7 @@ cv::Mat FanucModel::fanucInverseTask(const std::array<double, 6> coord) const
     return thetaFinal * 180. / PI;
 }
 
-cv::Mat FanucModel::fanucInverseTaskNew(const std::array<double, 6> coord) const
+cv::Mat FanucModel::fanucInverseTaskNew(const std::array<double, 6>& coord) const
 {
     cv::Mat p6 = rotMatrix(coord[3] / 180. * PI, coord[4] / 180. * PI, coord[5] / 180. * PI);
     double xc = coord[0] - p6.at<double>(0, 2) * 100.;
@@ -327,12 +296,5 @@ cv::Mat FanucModel::fanucInverseTaskNew(const std::array<double, 6> coord) const
     return fanucInverseTask({ xc, yc, zc, coord[3], coord[4], coord[5] });
 }
 
-cv::Mat FanucModel::getToCamera() const
-{
-    return _toCamera;
-}
+} //namespace nikita
 
-cv::Mat FanucModel::getToSixth() const
-{
-    return _toSixth;
-}

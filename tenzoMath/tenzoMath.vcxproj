@@ -121,18 +121,23 @@
   <ItemGroup>
     <ClCompile Include="Fanuc.cpp" />
     <ClCompile Include="fanucModel.cpp" />
-    <ClCompile Include="newRM.cpp" />
+    <ClCompile Include="fanucModelExtension.cpp" />
     <ClCompile Include="poly34.cpp" />
+    <ClCompile Include="RoboModel.cpp" />
     <ClCompile Include="Source.cpp" />
     <ClCompile Include="tenzoMath.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Fanuc.h" />
     <ClInclude Include="fanucModel.h" />
-    <ClInclude Include="newRM.h" />
+    <ClInclude Include="fanucModelExtension.h" />
     <ClInclude Include="poly34.h" />
+    <ClInclude Include="RoboModel.h" />
     <ClInclude Include="Tenzo.h" />
     <ClInclude Include="tenzoMath.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="ClassDiagram.cd" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

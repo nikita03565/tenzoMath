@@ -27,7 +27,10 @@
     <ClCompile Include="fanucModel.cpp">
       <Filter>Resource Files</Filter>
     </ClCompile>
-    <ClCompile Include="newRM.cpp">
+    <ClCompile Include="fanucModelExtension.cpp">
+      <Filter>Resource Files</Filter>
+    </ClCompile>
+    <ClCompile Include="RoboModel.cpp">
       <Filter>Resource Files</Filter>
     </ClCompile>
     <ClCompile Include="poly34.cpp">
@@ -41,17 +44,23 @@
     <ClInclude Include="Fanuc.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="Tenzo.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
     <ClInclude Include="fanucModel.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="newRM.h">
+    <ClInclude Include="fanucModelExtension.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Tenzo.h">
+    <ClInclude Include="RoboModel.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="poly34.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="ClassDiagram.cd" />
   </ItemGroup>
 </Project>

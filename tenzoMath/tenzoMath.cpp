@@ -317,25 +317,24 @@ void TenzoMath::ftControlCartesianCoord()
     };
     cv::Mat curPos = _model.fanucForwardTask(jointPos);
    
-    worldPos = FanucModel::getCoordsFromMat(curPos);
-    worldPos[3] *= (180.0 / PI);
-    worldPos[4] *= (180.0 / PI);
-    worldPos[5] *= (180.0 / PI);
+    worldPos = nikita::FanucModelExtension::getCoordsFromMat(curPos);
+    worldPos[3] *= (180.0 / nikita::FanucModel::PI);
+    worldPos[4] *= (180.0 / nikita::FanucModel::PI);
+    worldPos[5] *= (180.0 / nikita::FanucModel::PI);
 
     Tenzo tenzoData(_T("COM6"));
     cv::Mat forces(1, 3, cv::DataType<double>::type);
     cv::Mat torques(1, 3, cv::DataType<double>::type);
     cv::Mat currRot(3, 3, cv::DataType<double>::type);
-    constexpr double coefForces = 0.005;
-    constexpr double coefTorques = 0.001;
+    constexpr double coefForces = 0.0025;
+    constexpr double coefTorques = 0.0005;
     constexpr double threshold = 250;
-
-    
 
     double sumDeltaF = 0.0;
     double sumDeltaT = 0.0;
 
     double defaultValue = 0.01;
+    double dropValue = 0.001;
 
     double coefF = defaultValue;
     double coefT = defaultValue;
@@ -346,14 +345,15 @@ void TenzoMath::ftControlCartesianCoord()
     _fanuc.startWorking();
     _fanuc.setWorldFrame();
     std::chrono::time_point<std::chrono::system_clock> start;
+
+    // y = (atan(0.1(x) - 8.0)) / 80.0 + 0.02
+    // (atan(0.1(x) - 8.0)) / 3.0 + 0.4821471107493783
     while (true)
     {
-        
-
         std::array<double, 6> tmp = swapData(tenzoData.readData());
        
-        currRot = _model.rotMatrix(worldPos[3] / 180.0 * PI, worldPos[4] / 180.0 * PI,
-            worldPos[5] / 180.0 * PI);
+        currRot = _model.rotMatrix(worldPos[3] / 180.0 * nikita::FanucModel::PI, worldPos[4] / 180.0 * nikita::FanucModel::PI,
+            worldPos[5] / 180.0 * nikita::FanucModel::PI);
 
         std::array<double, 6> newData = gravCompensation(currRot, tmp);
        
@@ -383,9 +383,9 @@ void TenzoMath::ftControlCartesianCoord()
             {
                 std::cout << "forces!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n";
             
-                coefF = 0.001;
+                coefF = dropValue;
                 sumDeltaF = 0.0;
-                coefT = 0.001;
+                coefT = dropValue;
                 sumDeltaT = 0.0;
             }
             else
@@ -393,22 +393,9 @@ void TenzoMath::ftControlCartesianCoord()
                 if (coefF < 1.0)
                 {
                     sumDeltaF += cv::norm(forces) * coefF;
-                    if (sumDeltaF < 30)
-                    {
-                        coefF += 0.001;                     
-                    }
-                    else if (sumDeltaF < 100)
-                    {
-                        coefF += 0.01;
-                    } 
-                    else
-                    {
-                        coefF += 0.04;
-                    }                   
-                } else
-                {
-                    coefF = 1.0;
+                    coefF += (atan(0.05 * sumDeltaF - 8.0)) / 80.0 + 0.02;
                 }
+                
             }
         }
   
@@ -431,9 +418,9 @@ void TenzoMath::ftControlCartesianCoord()
             if (cosa2 < 0.7)
             {
                 std::cout << "torques!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n";
-                coefT = 0.001;
+                coefT = dropValue;
                 sumDeltaT = 0.0;
-                coefF = 0.001;
+                coefF = dropValue;
                 sumDeltaF = 0.0;
             }
             else
@@ -441,22 +428,7 @@ void TenzoMath::ftControlCartesianCoord()
                 if (coefT < 1.0)
                 {
                     sumDeltaT += cv::norm(torques) * coefT;
-                    if (sumDeltaT < 20)
-                    {
-                        coefT += 0.001;
-                    }
-                    else if (sumDeltaT < 80)                 
-                    {
-                        coefT += 0.01;
-                    }
-                    else
-                    {
-                        coefT += 0.04;
-                    }
-                }
-                else
-                {
-                    coefT = 1.0;
+                    coefT += (atan(0.01 * sumDeltaT - 8.0)) / 80.0 + 0.02;
                 }
             }
         }
@@ -468,15 +440,15 @@ void TenzoMath::ftControlCartesianCoord()
 
         prevF = forces.clone();
         prevT = torques.clone();
-        cv::Mat deltaPos = FanucModel::transMatrix(forces.at<double>(0, 0), forces.at<double>(0, 1), forces.at<double>(0, 2),
+        cv::Mat deltaPos = nikita::FanucModelExtension::transMatrix(forces.at<double>(0, 0), forces.at<double>(0, 1), forces.at<double>(0, 2),
             torques.at<double>(0, 0), torques.at<double>(0, 1), torques.at<double>(0, 2));
 
         curPos = curPos * deltaPos;
-        worldPos = FanucModel::getCoordsFromMat(curPos);
-        worldPos[3] *= (180.0 / PI);
-        worldPos[4] *= (180.0 / PI);
-        worldPos[5] *= (180.0 / PI);
-
+        worldPos = nikita::FanucModelExtension::getCoordsFromMat(curPos);
+        worldPos[3] *= (180.0 / nikita::FanucModel::PI);
+        worldPos[4] *= (180.0 / nikita::FanucModel::PI);
+        worldPos[5] *= (180.0 / nikita::FanucModel::PI);
+        
         
         start = std::chrono::system_clock::now();
         _fanuc.goToCoordinates(worldPos[0], worldPos[1], worldPos[2], worldPos[3], worldPos[4], worldPos[5]);
@@ -487,123 +459,4 @@ void TenzoMath::ftControlCartesianCoord()
 
        std::cout << coefF << ' ' << coefT << ' ' << elapsed_seconds << " ms\n";
     }
-}
-
-void TenzoMath::newJointsControl()
-{
-    std::array<double, 6> worldPos = { 985.0, 0.0, 1040.0, -180.0, 0.0, 0.0 };
-    std::array<double, 6> jointPos = { 0.0, 0.0, 0.0, 0.0, -90.0, 0.0 };
-    Tenzo tenzoData(_T("COM6"));
-    cv::Mat forces(1, 3, cv::DataType<double>::type);
-    cv::Mat torques(1, 3, cv::DataType<double>::type);
-    cv::Mat currRot(3, 3, cv::DataType<double>::type);
-    constexpr double coefForces = 0.005;
-    constexpr double coefTorques = 0.001;
-    constexpr double threshold = 150;
-    cv::Mat p6 = _model.fanucForwardTask(jointPos);
-    _fanuc.startWorking();
-    _fanuc.setJointFrame();
-    while (true)
-    {   
-        std::array<double, 6> tmp = swapData(tenzoData.readData());
-        
-        std::array<double, 6> newData = gravCompensation(p6, tmp);
-        forces.at<double>(0, 0) = (abs(newData[0]) < threshold ? 0 : newData[0] * coefForces);
-        forces.at<double>(0, 1) = (abs(newData[1]) < threshold ? 0 : newData[1] * coefForces);
-        forces.at<double>(0, 2) = (abs(newData[2]) < threshold ? 0 : newData[2] * coefForces);
-        torques.at<double>(0, 0) = (abs(newData[3]) < threshold ? 0 : newData[3] * coefTorques);
-        torques.at<double>(0, 1) = (abs(newData[4]) < threshold ? 0 : newData[4] * coefTorques);
-        torques.at<double>(0, 2) = (abs(newData[5]) < threshold ? 0 : newData[5] * coefTorques * 5);
-       // std::cout << "Data: " << forces.at<double>(0, 0) << '\t' << forces.at<double>(0, 1) << '\t' << forces.at<double>(0, 2) << '\t' <<
-        //    torques.at<double>(0, 0) << '\t' << torques.at<double>(0, 1) << '\t' << torques.at<double>(0, 2) << '\n';
-
-        /*if (abs(forces.at<double>(0, 0)) > 0.0 || abs(forces.at<double>(0, 1)) > 0.0 || abs(forces.at<double>(0, 2)) > 0.0 ||
-            abs(torques.at<double>(0, 0)) > 0.0 || abs(torques.at<double>(0, 1)) > 0.0 || abs(torques.at<double>(0, 2)) > 0.0)*/ // != 0
-        if (forces.at<double>(0, 0) != 0.0 || forces.at<double>(0, 1) != 0.0 || forces.at<double>(0, 2) != 0.0 ||
-            torques.at<double>(0, 0) != 0.0 || torques.at<double>(0, 1) != 0.0 || torques.at<double>(0, 2) != 0.0) 
-        {
-            //double t0 = torques.at<double>(0, 0);
-            //double t1 = torques.at<double>(0, 1);
-            //torques.at<double>(0, 0) = t0 * cos(worldPos[5] / 180. * PI) - t1 * sin(worldPos[5] / 180. * PI);
-            //torques.at<double>(0, 1) = -t0 * sin(worldPos[5] / 180. * PI) + t1 * cos(worldPos[5] / 180. * PI);
-            //torques.at<double>(0, 2) = (sin(worldPos[5] / 180. * PI) > 0 ? torques.at<double>(0, 2) : -torques.at<double>(0, 2));
-
-            p6(cv::Rect(0, 0, 3, 3)).copyTo(currRot);
-            forces *= currRot.t();
-            torques *= currRot.t(); 
-
-            worldPos[0] += forces.at<double>(0, 0);
-            worldPos[1] += forces.at<double>(0, 1);
-            worldPos[2] += forces.at<double>(0, 2);
-            worldPos[3] += torques.at<double>(0, 0);
-            worldPos[4] -= torques.at<double>(0, 1);
-            worldPos[5] -= torques.at<double>(0, 2);
-
-            for (int i = 3; i < 6; ++i)
-            {
-                if (worldPos[i] > 180.0)
-                    worldPos[i] -= 360.0;
-                if (worldPos[i] < -180.0)
-                    worldPos[i] += 360.0;
-            }
-
-            for (int i = 0; i < 6; ++i)
-            {
-                std::cout << worldPos[i] << '\t';
-            }
-            std::cout << std::endl;
-
-            std::cout << _model.fanucInverseTask(worldPos) << std::endl;
-
-            jointPos = chooseNearestPose(_model.fanucInverseTask(worldPos), jointPos);
-            p6 = _model.fanucForwardTask(jointPos);
-           /* for (int i = 0; i < 6; ++i)
-            {
-                std::cout << jointPos[i] << '\t';
-            }
-            std::cout << std::endl;*/
-
-            _fanuc.goToCoordinates(jointPos[0], jointPos[1], jointPos[2], jointPos[3], jointPos[4], jointPos[5]);
-            _fanuc.getJointAngles(); //????падает
-        }
-       // std::this_thread::sleep_for(std::chrono::milliseconds(100));
-    }
-}
-
-std::array<double, 6> TenzoMath::chooseNearestPose(cv::Mat res, std::array<double, 6> prevPos)
-{
-    if (!res.empty())
-    {
-        // std::cout << res << std::endl << std::endl;
-        std::vector<double> delta;
-        for (int j = 0; j < res.rows; ++j)
-        {
-            double deltaTmp = 0;
-            for (int t = 0; t < 6; ++t)
-            {
-                deltaTmp += abs(res.at<double>(j, t) - prevPos[t]);
-            }
-            delta.emplace_back(deltaTmp);
-        }
-        if (!delta.empty())
-        {
-            int num = 0;
-            double min = delta[0];
-            for (int j = 0; j < delta.size(); ++j)
-            {
-                if (delta[j] < min)
-                {
-                    min = delta[j];
-                    num = j;
-                }
-            }
-            if (abs(min) < 50.f) // обосновать или убрать
-            {
-                std::cout << "\nchosen\n";
-                return std::array<double, 6>{res.at<double>(num, 0), res.at<double>(num, 1), res.at<double>(num, 2),  res.at<double>(num, 3), res.at<double>(num, 4), res.at<double>(num, 5) };
-            }
-        }
-        return prevPos;
-    }
-    return prevPos;
 }

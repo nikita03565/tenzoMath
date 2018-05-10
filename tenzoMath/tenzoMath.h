@@ -3,7 +3,7 @@
 
 #include <array>
 #include <iostream>
-#include "fanucModel.h"
+#include "fanucModelExtension.h"
 #include "Tenzo.h"
 #include "Fanuc.h"
 
@@ -63,7 +63,7 @@ class TenzoMath
     /**
      * \brief object for math model of fanuc
      */
-    FanucModel _model;
+    nikita::FanucModelExtension _model;
 
     /**
     * \brief collected forces and torques measurements
@@ -110,12 +110,6 @@ public:
     void newJointsControl();
 
     static std::array<double, 6> chooseNearestPose(cv::Mat res, std::array<double, 6> prevPos);
-
-    void ftControlJoints();
-
-    void collectTestData();
-
-    void doTest();
 };
 
 #endif //_TENZO_MATH_
